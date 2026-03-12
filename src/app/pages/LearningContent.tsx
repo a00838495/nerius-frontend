@@ -96,7 +96,7 @@ function getCourseProgress(course: CourseCatalogItem) {
 }
 
 function isCourseCompleted(course: CourseCatalogItem) {
-  return course.enrollment?.status === "completed";
+  return course.enrollment?.status === "completed" || (course.enrollment?.progress_percent ?? 0) >= 100;
 }
 
 function ProgressBar({ value, color = "#0099DC", height = 5 }: { value: number; color?: string; height?: number }) {
@@ -464,19 +464,12 @@ export function LearningContent() {
     selectedDuration !== "Cualquiera" ? selectedDuration : null,
     selectedEnrollmentFilter !== "Todos" ? selectedEnrollmentFilter : null,
   ].filter(Boolean) as string[];
+  const selectedCourseIsCompleted = !!(selectedCourseDetail && isCourseCompleted(selectedCourseDetail));
 
   return (
     <>
       <div className="max-w-[1440px] mx-auto px-6 lg:px-10 py-10">
         <div className="mb-8">
-          <div
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-3"
-            style={{ backgroundColor: "rgba(0, 153, 220, 0.1)", border: "1px solid rgba(0, 153, 220, 0.2)" }}
-          >
-            <BookOpen size={13} color="#0099DC" />
-            <span style={{ color: "#0099DC", fontSize: "0.78rem", fontWeight: 600 }}>LEARNING CATALOG</span>
-          </div>
-
           <h1
             style={{
               fontFamily: "'Nunito', sans-serif",
@@ -762,12 +755,20 @@ export function LearningContent() {
                           <span
                             className="rounded-full px-3 py-1 text-xs font-semibold"
                             style={{
-                              backgroundColor: selectedCourseDetail.is_enrolled ? "rgba(74,138,44,0.92)" : "rgba(255,255,255,0.16)",
+                              backgroundColor: selectedCourseDetail.is_enrolled
+                                ? selectedCourseIsCompleted
+                                  ? "rgba(74,138,44,0.92)"
+                                  : "rgba(0,153,220,0.92)"
+                                : "rgba(255,255,255,0.16)",
                               color: "#FFFFFF",
                               border: selectedCourseDetail.is_enrolled ? "none" : "1px solid rgba(255,255,255,0.16)",
                             }}
                           >
-                            {selectedCourseDetail.is_enrolled ? "Inscrito" : "Disponible"}
+                            {selectedCourseDetail.is_enrolled
+                              ? selectedCourseIsCompleted
+                                ? "Completado"
+                                : "Inscrito"
+                              : "Disponible"}
                           </span>
                         </div>
                       </div>
@@ -864,7 +865,7 @@ export function LearningContent() {
                                   Inscribiendo...
                                 </span>
                               ) : selectedCourseDetail.is_enrolled ? (
-                                "Continuar aprendizaje"
+                                selectedCourseIsCompleted ? "Repasar" : "Continuar aprendizaje"
                               ) : (
                                 "Inscribirme ahora"
                               )}

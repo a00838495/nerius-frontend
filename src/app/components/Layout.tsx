@@ -13,7 +13,6 @@ import {
   Search,
   Bell,
   ChevronDown,
-  Zap,
   Menu,
   X,
   LogOut,
@@ -36,6 +35,7 @@ const navItems = [
 export function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
@@ -47,7 +47,12 @@ export function Layout() {
       window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    setAvatarError(false);
+  }, [user?.avatar]);
+
   if (!user) return null;
+  const showAvatarImage = Boolean(user.avatar?.trim()) && !avatarError;
 
   return (
     <div
@@ -111,26 +116,6 @@ export function Layout() {
 
             {/* Right Actions */}
             <div className="flex items-center gap-3">
-              {/* Points badge */}
-              <div
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-                style={{
-                  backgroundColor: "rgba(229, 168, 0, 0.2)",
-                  border: "1px solid rgba(229, 168, 0, 0.4)",
-                }}
-              >
-                <Zap size={12} color="#E5A800" />
-                <span
-                  style={{
-                    color: "#E5A800",
-                    fontWeight: 600,
-                    fontSize: "0.8rem",
-                  }}
-                >
-                  {(user.points || 0).toLocaleString()} pts
-                </span>
-              </div>
-
               {/* Notification */}
               {/* <button
                 className="relative w-9 h-9 rounded-[10px] flex items-center justify-center transition-all duration-200 hover:bg-black/5"
@@ -149,12 +134,26 @@ export function Layout() {
                 onClick={() => navigate("/profile")}
                 title="Go to Profile"
               >
-                <img
-                  src={user.avatar}
-                  alt={user.first_name}
-                  className="w-7 h-7 rounded-full object-cover transition-transform duration-200 group-hover/avatar:scale-110"
-                  style={{ border: "2px solid #E5A800" }}
-                />
+                {showAvatarImage ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.first_name}
+                    onError={() => setAvatarError(true)}
+                    className="w-7 h-7 rounded-full object-cover transition-transform duration-200 group-hover/avatar:scale-110"
+                    style={{ border: "2px solid #E5A800" }}
+                  />
+                ) : (
+                  <span
+                    className="w-7 h-7 rounded-full flex items-center justify-center transition-transform duration-200 group-hover/avatar:scale-110"
+                    style={{
+                      border: "2px solid #E5A800",
+                      backgroundColor: "#F4F6F9",
+                      color: "#1C3A5C",
+                    }}
+                  >
+                    <User size={14} />
+                  </span>
+                )}
                 <span
                   className="hidden lg:block text-sm transition-colors duration-200 group-hover/avatar:text-[#E5A800]"
                   style={{ color: "#1A2332", fontWeight: 500 }}

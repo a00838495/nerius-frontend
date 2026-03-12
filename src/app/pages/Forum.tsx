@@ -137,13 +137,7 @@ export function Forum() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <div className="flex items-center gap-3 mb-2">
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center"
-            style={{ backgroundColor: "rgba(0,153,220,0.1)" }}
-          >
-            <MessageSquare size={24} color="#0099DC" />
-          </div>
+        <div className="mb-2">
           <h1
             style={{
               fontFamily: "'Nunito', sans-serif",

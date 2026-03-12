@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Add default/mock values for missing fields to avoid breaking components
         const fullUser = {
           ...userData,
-          avatar: "https://via.placeholder.com/150",
+          avatar: userData.avatar ?? "",
           department: "General",
           role: "Learner",
           points: 0,

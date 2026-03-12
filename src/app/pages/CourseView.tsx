@@ -95,8 +95,10 @@ export function CourseView() {
   const [earnedBadgeQueue, setEarnedBadgeQueue] = useState<EarnedBadge[]>([]);
   const [activeEarnedBadge, setActiveEarnedBadge] = useState<EarnedBadge | null>(null);
   const [pendingNavigationAfterBadge, setPendingNavigationAfterBadge] = useState<"next" | "prev" | null>(null);
+  const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
   
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const previousEnrollmentProgressRef = useRef<number | null>(null);
 
   // Fetch course overview
   const fetchCourseDetails = async () => {
@@ -275,6 +277,30 @@ export function CourseView() {
     }
   }, [courseId]);
 
+  useEffect(() => {
+    setShowCompletionCelebration(false);
+    previousEnrollmentProgressRef.current = null;
+  }, [courseId]);
+
+  useEffect(() => {
+    if (!course?.enrollment) {
+      return;
+    }
+
+    const currentEnrollmentProgress = course.enrollment.progress_percent ?? 0;
+    const previousEnrollmentProgress = previousEnrollmentProgressRef.current;
+
+    if (
+      previousEnrollmentProgress !== null &&
+      previousEnrollmentProgress < 100 &&
+      currentEnrollmentProgress >= 100
+    ) {
+      setShowCompletionCelebration(true);
+    }
+
+    previousEnrollmentProgressRef.current = currentEnrollmentProgress;
+  }, [course?.enrollment?.id, course?.enrollment?.progress_percent]);
+
   // Navigate to lesson
   const navigateToLesson = async (moduleId: string, lessonId: string) => {
     setCurrentModuleId(moduleId);
@@ -396,9 +422,8 @@ export function CourseView() {
 
   // Check if course is 100% complete
   const isCourseCompleted = course.enrollment && (course.enrollment.progress_percent ?? 0) >= 100;
-  const hasPendingBadgeCelebration = !!activeEarnedBadge || earnedBadgeQueue.length > 0;
 
-  if (isCourseCompleted && !hasPendingBadgeCelebration) {
+  if (isCourseCompleted && showCompletionCelebration) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-green-50 to-blue-50">
         <motion.div
@@ -407,62 +432,18 @@ export function CourseView() {
           transition={{ duration: 0.5, type: "spring" }}
           className="text-center max-w-2xl px-8"
         >
-          {/* Confetti animation */}
-          <motion.div
-            initial={{ y: -100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.6 }}
-            className="mb-6"
-          >
-            <div className="relative inline-block">
-              <motion.div
-                animate={{
-                  rotate: [0, 10, -10, 10, 0],
-                  scale: [1, 1.1, 1, 1.1, 1],
-                }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
-                className="text-8xl"
-              >
-                🎉
-              </motion.div>
-              {/* Floating confetti pieces */}
-              {[...Array(8)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ y: 0, opacity: 1 }}
-                  animate={{
-                    y: [-20, -60, -100],
-                    x: [(i % 2 === 0 ? -1 : 1) * (20 + i * 10)],
-                    opacity: [1, 1, 0],
-                    rotate: [0, 360],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    delay: i * 0.2,
-                  }}
-                  className="absolute top-0 left-1/2"
-                  style={{
-                    fontSize: '24px',
-                  }}
-                >
-                  {['🎊', '✨', '⭐', '🌟'][i % 4]}
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
           {/* Course image */}
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.6 }}
-            className="mb-6"
+            className="mb-8 flex justify-center"
           >
             {course.cover_url && (
               <img 
                 src={course.cover_url} 
                 alt={course.title}
-                className="w-80 h-56 object-cover rounded-lg shadow-lg"
+                className="w-full max-w-4xl h-64 sm:h-80 md:h-96 object-cover rounded-xl shadow-xl"
               />
             )}
           </motion.div>
@@ -509,6 +490,12 @@ export function CourseView() {
             transition={{ delay: 0.8, duration: 0.5 }}
             className="flex gap-4 justify-center"
           >
+            <button
+              onClick={() => setShowCompletionCelebration(false)}
+              className="px-6 py-3 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+            >
+              Repasar curso
+            </button>
             <button
               onClick={() => navigate("/")}
               className="px-6 py-3 bg-[#0099DC] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
