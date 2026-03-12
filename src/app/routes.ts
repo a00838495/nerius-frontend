@@ -6,6 +6,7 @@ import { MyProgress } from './pages/MyProgress';
 import { Profile } from './pages/Profile';
 import { Search } from './pages/Search';
 import { LoginPage } from './pages/LoginPage';
+import { CourseView } from './pages/CourseView';
 import { RequireAuth } from './components/RequireAuth';
 
 export const router = createBrowserRouter([
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, Component: Home },
           { path: 'learning', Component: LearningContent },
+          { path: 'courses/:courseId', Component: CourseView },
           { path: 'progress', Component: MyProgress },
           { path: 'profile', Component: Profile },
           { path: 'search', Component: Search },

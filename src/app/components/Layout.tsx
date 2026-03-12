@@ -21,6 +21,7 @@ import {
 import { useAuth } from "../hooks/useAuth";
 import whirlpoolLogo from "../../assets/c1344ad5145e3dcee746b700b0a6ef41f0a04829.png";
 import { Button } from "./ui/button";
+import { Toaster } from "./ui/sonner";
 
 const navItems = [
   { path: "/", label: "Home", icon: Home, exact: true },
@@ -240,6 +241,9 @@ export function Layout() {
       <main className="pt-20">
         <Outlet />
       </main>
+      
+      {/* Toast Notifications */}
+      <Toaster />
     </div>
   );
 }
