@@ -451,6 +451,21 @@ export function CourseView() {
               ))}
             </div>
           </motion.div>
+          {/* Course image */}
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.6 }}
+            className="mb-6"
+          >
+            {course.cover_url && (
+              <img 
+                src={course.cover_url} 
+                alt={course.title}
+                className="w-80 h-56 object-cover rounded-lg shadow-lg"
+              />
+            )}
+          </motion.div>
 
           <motion.h1
             initial={{ y: 20, opacity: 0 }}
@@ -478,22 +493,6 @@ export function CourseView() {
           >
             "{course.title}"
           </motion.p>
-
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.6, duration: 0.5, type: "spring" }}
-            className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-green-100 mb-8"
-          >
-            <motion.div
-              animate={{
-                scale: [1, 1.2, 1],
-              }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              <CheckCircle2 size={64} className="text-green-500" />
-            </motion.div>
-          </motion.div>
 
           <motion.p
             initial={{ y: 20, opacity: 0 }}
@@ -905,31 +904,90 @@ function ResourceViewer({ resource, onProgressUpdate }: {
         </div>
       </div>
 
-      <div className="p-0">
+      <div className="p-0" style={{ backgroundColor: "#f5f5f5", minHeight: "400px", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {resource.resource_type === "video" && (
-          <video
-            ref={videoRef}
-            controls
-            className="w-full"
-            poster={resource.thumbnail_url}
-          >
-            <source src={resource.external_url} type="video/mp4" />
-            Tu navegador no soporta videos.
-          </video>
+          (() => {
+            // Try multiple possible URL field names from backend
+            const videoUrl = resource.external_url || (resource as any).url || (resource as any).media_url || (resource as any).content_url || (resource as any).video_url;
+            
+            if (!videoUrl) {
+              return (
+                <div className="text-center p-8">
+                  <p style={{ color: "#666", fontSize: "0.95rem" }}>No se pudo acceder al video. URL no disponible.</p>
+                </div>
+              );
+            }
+
+            // Detect YouTube URLs and convert to embed format
+            const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?([^&\n?#]+)/;
+            const youtubeMatch = videoUrl.match(youtubeRegex);
+            const youtubeVideoId = youtubeMatch ? youtubeMatch[1] : null;
+
+            if (youtubeVideoId) {
+              // Render YouTube iframe
+              return (
+                <iframe
+                  width="100%"
+                  height="600"
+                  src={`https://www.youtube.com/embed/${youtubeVideoId}`}
+                  title={resource.title}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  style={{ maxHeight: "600px" }}
+                />
+              );
+            }
+
+            // For non-YouTube videos, use HTML5 video element
+            return (
+              <video
+                ref={videoRef}
+                controls
+                className="w-full"
+                poster={resource.thumbnail_url || undefined}
+                style={{ maxHeight: "600px", objectFit: "contain" }}
+              >
+                <source src={videoUrl} type="video/mp4" />
+                <source src={videoUrl} type="video/webm" />
+                <source src={videoUrl} type="video/ogg" />
+                Tu navegador no soporta videos.
+              </video>
+            );
+          })()
         )}
 
         {resource.resource_type === "pdf" && (
-          <div className="p-8 text-center">
-            <FileText size={48} className="mx-auto text-blue-500 mb-4" />
-            <a
-              href={resource.external_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block px-6 py-3 bg-[#0099DC] text-white rounded-lg hover:opacity-90 transition-opacity"
-              onClick={() => onProgressUpdate(100)}
-            >
-              Abrir PDF
-            </a>
+          <div className="w-full h-full flex flex-col">
+            <div className="flex-1" style={{ minHeight: "500px" }}>
+              <iframe
+                src={`https://docs.google.com/gview?url=${encodeURIComponent(resource.external_url)}&embedded=true`}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  minHeight: "500px",
+                  border: "none",
+                }}
+                title={resource.title}
+              />
+            </div>
+            <div className="flex items-center justify-center gap-4 p-6 bg-white border-t border-gray-200">
+              <a
+                href={resource.external_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-6 py-3 bg-[#0099DC] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
+                onClick={() => onProgressUpdate(100)}
+              >
+                Abrir en otra pestaña
+              </a>
+              <button
+                onClick={() => onProgressUpdate(100)}
+                className="inline-flex items-center px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Marcar como completado
+              </button>
+            </div>
           </div>
         )}
 
