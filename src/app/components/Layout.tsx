@@ -17,6 +17,7 @@ import {
   Menu,
   X,
   LogOut,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import whirlpoolLogo from "../../assets/c1344ad5145e3dcee746b700b0a6ef41f0a04829.png";
@@ -24,11 +25,12 @@ import { Button } from "./ui/button";
 import { Toaster } from "./ui/sonner";
 
 const navItems = [
-  { path: "/", label: "Home", icon: Home, exact: true },
-  { path: "/learning", label: "Learning", icon: BookOpen },
-  { path: "/progress", label: "My Progress", icon: TrendingUp },
-  { path: "/profile", label: "Profile", icon: User },
-  { path: "/search", label: "Search", icon: Search },
+  { path: "/", label: "Inicio", icon: Home, exact: true },
+  { path: "/learning", label: "Aprendizaje", icon: BookOpen },
+  { path: "/forum", label: "Foro", icon: MessageSquare },
+  { path: "/progress", label: "Mi Progreso", icon: TrendingUp },
+  { path: "/profile", label: "Perfil", icon: User },
+  { path: "/search", label: "Buscar", icon: Search },
 ];
 
 export function Layout() {

@@ -7,6 +7,8 @@ import { Profile } from './pages/Profile';
 import { Search } from './pages/Search';
 import { LoginPage } from './pages/LoginPage';
 import { CourseView } from './pages/CourseView';
+import { Forum } from './pages/Forum';
+import { ForumPostDetail } from './pages/ForumPostDetail';
 import { RequireAuth } from './components/RequireAuth';
 
 export const router = createBrowserRouter([
@@ -25,6 +27,8 @@ export const router = createBrowserRouter([
           { index: true, Component: Home },
           { path: 'learning', Component: LearningContent },
           { path: 'courses/:courseId', Component: CourseView },
+          { path: 'forum', Component: Forum },
+          { path: 'forum/:postId', Component: ForumPostDetail },
           { path: 'progress', Component: MyProgress },
           { path: 'profile', Component: Profile },
           { path: 'search', Component: Search },

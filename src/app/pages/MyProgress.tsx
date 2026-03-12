@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { scoreboard, weeklyActivity, monthlyProgress, courseHistory } from "../data/mockData";
 import { useAuth } from "../hooks/useAuth";
+import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import type { UserBadge } from "../types/badges";
 
 function AnimatedNumber({ target, duration = 1500 }: { target: number; duration?: number }) {
   const [current, setCurrent] = useState(0);
@@ -77,6 +79,55 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export function MyProgress() {
   const { user } = useAuth();
+  const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
+  const [loadingBadges, setLoadingBadges] = useState(true);
+  const [badgesError, setBadgesError] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchUserBadges = async () => {
+      try {
+        setLoadingBadges(true);
+        setBadgesError(false);
+
+        const response = await fetch("/api/v1/courses/user/badges", {
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch badges");
+        }
+
+        const data: UserBadge[] = await response.json();
+        if (!mounted) {
+          return;
+        }
+
+        setUserBadges(
+          [...data].sort(
+            (firstBadge, secondBadge) =>
+              new Date(secondBadge.awarded_at).getTime() - new Date(firstBadge.awarded_at).getTime(),
+          ),
+        );
+      } catch (error) {
+        console.error("Error fetching badges:", error);
+        if (mounted) {
+          setBadgesError(true);
+        }
+      } finally {
+        if (mounted) {
+          setLoadingBadges(false);
+        }
+      }
+    };
+
+    fetchUserBadges();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
   
   if (!user) return <div className="p-10 text-center">Loading...</div>;
 
@@ -91,8 +142,6 @@ export function MyProgress() {
     { label: "Day Streak", value: user.streak || 0, icon: Flame, color: "#C85A2A", suffix: "d" },
     { label: "Global Rank", value: user.rank || 0, icon: Trophy, color: "#1C3A5C", suffix: "" },
   ];
-
-  const earnedBadges = (user.badges || []).filter((b: any) => b.earned);
 
   return (
     <div className="max-w-[1440px] mx-auto px-6 lg:px-10 py-10">
@@ -342,38 +391,105 @@ export function MyProgress() {
               className="px-2 py-1 rounded-lg text-xs font-semibold"
               style={{ backgroundColor: "rgba(229,168,0,0.1)", color: "#E5A800" }}
             >
-              {earnedBadges.length}/{user.badges?.length || 0} earned
+              {loadingBadges ? "Cargando..." : `${userBadges.length} ganadas`}
             </span>
           </div>
 
-          <div className="grid grid-cols-4 gap-3">
-            {(user.badges || []).map((badge: any) => (
-              <div
-                key={badge.id}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all duration-200 hover:scale-105 cursor-pointer"
-                style={{
-                  backgroundColor: badge.earned ? `${badge.color}12` : "#F9FAFB",
-                  border: badge.earned ? `1.5px solid ${badge.color}30` : "1.5px solid #F0F1F5",
-                  opacity: badge.earned ? 1 : 0.45,
-                  filter: badge.earned ? "none" : "grayscale(1)",
-                }}
-                title={badge.description}
-              >
-                <span style={{ fontSize: "1.4rem" }}>{badge.icon}</span>
-                <span
+          {loadingBadges ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="rounded-2xl border border-gray-100 bg-gray-50 p-4 animate-pulse"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="h-14 w-14 rounded-2xl bg-white" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 w-2/3 rounded bg-white" />
+                      <div className="h-3 w-full rounded bg-white" />
+                      <div className="h-3 w-1/2 rounded bg-white" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : badgesError ? (
+            <div
+              className="rounded-2xl border p-5 text-sm"
+              style={{ borderColor: "rgba(212,24,61,0.15)", backgroundColor: "rgba(212,24,61,0.04)", color: "#9F1239" }}
+            >
+              No fue posible cargar las badges del usuario en este momento.
+            </div>
+          ) : userBadges.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-5 py-8 text-center">
+              <Award size={28} color="#9AA5B4" className="mx-auto mb-3" />
+              <p style={{ color: "#1A2332", fontWeight: 600, marginBottom: "0.35rem" }}>
+                Aún no tienes badges desbloqueadas
+              </p>
+              <p style={{ color: "#6B7A8D", fontSize: "0.85rem" }}>
+                Completa lecciones y alcanza hitos de progreso para empezar a coleccionarlas.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {userBadges.map((userBadge) => (
+                <motion.div
+                  key={userBadge.id}
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="relative overflow-hidden rounded-2xl border p-4"
                   style={{
-                    fontSize: "0.65rem",
-                    fontWeight: 600,
-                    color: badge.earned ? badge.color : "#9AA5B4",
-                    textAlign: "center",
-                    lineHeight: 1.2,
+                    borderColor: `${userBadge.badge.main_color}30`,
+                    background: `linear-gradient(135deg, ${userBadge.badge.main_color}16 0%, rgba(255,255,255,0.98) 44%, ${userBadge.badge.secondary_color}12 100%)`,
+                    boxShadow: `0 14px 28px ${userBadge.badge.secondary_color}12`,
                   }}
                 >
-                  {badge.name}
-                </span>
-              </div>
-            ))}
-          </div>
+                  <div
+                    className="absolute -right-12 -top-12 h-24 w-24 rounded-full blur-2xl"
+                    style={{ backgroundColor: `${userBadge.badge.main_color}30` }}
+                  />
+                  <div className="relative flex items-start gap-4">
+                    <div
+                      className="flex h-16 w-16 items-center justify-center rounded-2xl border bg-white/90 shadow-sm"
+                      style={{ borderColor: `${userBadge.badge.secondary_color}24` }}
+                    >
+                      <ImageWithFallback
+                        src={userBadge.badge.icon_url}
+                        alt={userBadge.badge.name}
+                        className="h-10 w-10 object-contain"
+                      />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 style={{ color: "#1A2332", fontWeight: 700, fontSize: "0.95rem", lineHeight: 1.25 }}>
+                            {userBadge.badge.name}
+                          </h3>
+                          <p style={{ color: userBadge.badge.secondary_color, fontSize: "0.74rem", fontWeight: 700, marginTop: "0.3rem" }}>
+                            {new Date(userBadge.awarded_at).toLocaleDateString("es-ES", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </p>
+                        </div>
+
+                        <div
+                          className="h-3 w-3 rounded-full shrink-0 mt-1"
+                          style={{ background: `linear-gradient(135deg, ${userBadge.badge.main_color}, ${userBadge.badge.secondary_color})` }}
+                        />
+                      </div>
+
+                      <p style={{ color: "#516174", fontSize: "0.82rem", lineHeight: 1.55, marginTop: "0.55rem" }}>
+                        {userBadge.badge.description}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </motion.div>
 
         {/* Scoreboard Position */}
