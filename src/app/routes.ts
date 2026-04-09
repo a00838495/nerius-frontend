@@ -9,6 +9,8 @@ import { LoginPage } from './pages/LoginPage';
 import { CourseView } from './pages/CourseView';
 import { Forum } from './pages/Forum';
 import { ForumPostDetail } from './pages/ForumPostDetail';
+import GemBank from './pages/GemBank';
+import GemDetail from './pages/GemDetail';
 import { RequireAuth } from './components/RequireAuth';
 
 export const router = createBrowserRouter([
@@ -29,6 +31,8 @@ export const router = createBrowserRouter([
           { path: 'courses/:courseId', Component: CourseView },
           { path: 'forum', Component: Forum },
           { path: 'forum/:postId', Component: ForumPostDetail },
+          { path: 'gems', Component: GemBank },
+          { path: 'gems/:gemId', Component: GemDetail },
           { path: 'progress', Component: MyProgress },
           { path: 'profile', Component: Profile },
           { path: 'search', Component: Search },

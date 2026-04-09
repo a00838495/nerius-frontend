@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//home/mzrojox/tec/nerius/**)",
+      "Bash(ls -la /home/mzrojox/tec/nerius/nerius-frontend/*.md)",
+      "Bash(npx vite:*)",
+      "Bash(python -c ':*)",
+      "Bash(/home/mzrojox/.pyenv/versions/backend/bin/python -c \"import py_compile; py_compile.compile\\('/home/mzrojox/tec/nerius/nerius-backend/seed_data.py', doraise=True\\); print\\('OK'\\)\")",
+      "Bash(curl -s http://127.0.0.1:8000/api/v1/courses/15e8d46b-9616-480c-9a6a-c6c5224a3127/lessons/4510b72c-b385-4b4a-b027-5930df4c543e/quiz)",
+      "Bash(/home/mzrojox/.pyenv/versions/backend/bin/pip install:*)",
+      "Bash(/home/mzrojox/.pyenv/versions/backend/bin/python -c ':*)",
+      "Bash(./node_modules/.bin/vite build:*)"
+    ],
+    "additionalDirectories": [
+      "/home/mzrojox/tec/nerius/nerius-backend/src/db/models",
+      "/home/mzrojox/tec/nerius/nerius-backend/src/api/routes",
+      "/home/mzrojox/tec/nerius/nerius-backend"
+    ]
+  }
+}

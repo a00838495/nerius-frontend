@@ -17,8 +17,13 @@ import {
   LayoutList,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Sparkles, Bookmark, Award } from "lucide-react";
 import { BadgeCelebrationOverlay } from "../components/BadgeCelebrationOverlay";
+import QuizGate from "../components/QuizGate";
+import CertificationCard from "../components/CertificationCard";
+import { ClipboardCheck } from "lucide-react";
 import type { EarnedBadge, LessonProgressResponse } from "../types/badges";
+import type { GemCard as GemCardType } from "../types/gems";
 
 interface Resource {
   id: string;
@@ -37,6 +42,7 @@ interface Lesson {
   estimated_minutes: number;
   status: "not_started" | "in_progress" | "completed";
   progress_percent?: number | null;
+  has_quiz?: boolean;
 }
 
 interface LessonDetail {
@@ -95,8 +101,13 @@ export function CourseView() {
   const [earnedBadgeQueue, setEarnedBadgeQueue] = useState<EarnedBadge[]>([]);
   const [activeEarnedBadge, setActiveEarnedBadge] = useState<EarnedBadge | null>(null);
   const [pendingNavigationAfterBadge, setPendingNavigationAfterBadge] = useState<"next" | "prev" | null>(null);
-  
+  const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
+  const [lessonGems, setLessonGems] = useState<GemCardType[]>([]);
+  const [showCertModal, setShowCertModal] = useState(false);
+  const [hasCertification, setHasCertification] = useState(false);
+
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const previousEnrollmentProgressRef = useRef<number | null>(null);
 
   // Fetch course overview
   const fetchCourseDetails = async () => {
@@ -120,6 +131,13 @@ export function CourseView() {
           await fetchLessonDetail(firstLesson.id);
         }
       }
+      // Check if course has certification
+      try {
+        const certRes = await fetch(`/api/v1/courses/${courseId}/certification`, { credentials: "include" });
+        setHasCertification(certRes.ok);
+      } catch {
+        setHasCertification(false);
+      }
     } catch (error) {
       console.error("Error fetching course:", error);
       toast.error("Error al cargar el curso");
@@ -137,6 +155,19 @@ export function CourseView() {
       
       const data: LessonDetail = await response.json();
       setCurrentLessonDetail(data);
+
+      // Fetch gems associated with this lesson
+      try {
+        const gemsRes = await fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/gems`, { credentials: "include" });
+        if (gemsRes.ok) {
+          const gemsData = await gemsRes.json();
+          setLessonGems(Array.isArray(gemsData) ? gemsData : []);
+        } else {
+          setLessonGems([]);
+        }
+      } catch {
+        setLessonGems([]);
+      }
     } catch (error) {
       console.error("Error fetching lesson:", error);
       toast.error("Error al cargar la lección");
@@ -275,6 +306,30 @@ export function CourseView() {
     }
   }, [courseId]);
 
+  useEffect(() => {
+    setShowCompletionCelebration(false);
+    previousEnrollmentProgressRef.current = null;
+  }, [courseId]);
+
+  useEffect(() => {
+    if (!course?.enrollment) {
+      return;
+    }
+
+    const currentEnrollmentProgress = course.enrollment.progress_percent ?? 0;
+    const previousEnrollmentProgress = previousEnrollmentProgressRef.current;
+
+    if (
+      previousEnrollmentProgress !== null &&
+      previousEnrollmentProgress < 100 &&
+      currentEnrollmentProgress >= 100
+    ) {
+      setShowCompletionCelebration(true);
+    }
+
+    previousEnrollmentProgressRef.current = currentEnrollmentProgress;
+  }, [course?.enrollment?.id, course?.enrollment?.progress_percent]);
+
   // Navigate to lesson
   const navigateToLesson = async (moduleId: string, lessonId: string) => {
     setCurrentModuleId(moduleId);
@@ -396,9 +451,8 @@ export function CourseView() {
 
   // Check if course is 100% complete
   const isCourseCompleted = course.enrollment && (course.enrollment.progress_percent ?? 0) >= 100;
-  const hasPendingBadgeCelebration = !!activeEarnedBadge || earnedBadgeQueue.length > 0;
 
-  if (isCourseCompleted && !hasPendingBadgeCelebration) {
+  if (isCourseCompleted && showCompletionCelebration) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-green-50 to-blue-50">
         <motion.div
@@ -407,62 +461,18 @@ export function CourseView() {
           transition={{ duration: 0.5, type: "spring" }}
           className="text-center max-w-2xl px-8"
         >
-          {/* Confetti animation */}
-          <motion.div
-            initial={{ y: -100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.6 }}
-            className="mb-6"
-          >
-            <div className="relative inline-block">
-              <motion.div
-                animate={{
-                  rotate: [0, 10, -10, 10, 0],
-                  scale: [1, 1.1, 1, 1.1, 1],
-                }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
-                className="text-8xl"
-              >
-                🎉
-              </motion.div>
-              {/* Floating confetti pieces */}
-              {[...Array(8)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ y: 0, opacity: 1 }}
-                  animate={{
-                    y: [-20, -60, -100],
-                    x: [(i % 2 === 0 ? -1 : 1) * (20 + i * 10)],
-                    opacity: [1, 1, 0],
-                    rotate: [0, 360],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    delay: i * 0.2,
-                  }}
-                  className="absolute top-0 left-1/2"
-                  style={{
-                    fontSize: '24px',
-                  }}
-                >
-                  {['🎊', '✨', '⭐', '🌟'][i % 4]}
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
           {/* Course image */}
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.6 }}
-            className="mb-6"
+            className="mb-8 flex justify-center"
           >
             {course.cover_url && (
-              <img 
-                src={course.cover_url} 
+              <img
+                src={course.cover_url}
                 alt={course.title}
-                className="w-80 h-56 object-cover rounded-lg shadow-lg"
+                className="w-full max-w-4xl h-64 sm:h-80 md:h-96 object-cover rounded-xl shadow-xl"
               />
             )}
           </motion.div>
@@ -510,6 +520,12 @@ export function CourseView() {
             className="flex gap-4 justify-center"
           >
             <button
+              onClick={() => setShowCompletionCelebration(false)}
+              className="px-6 py-3 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+            >
+              Repasar curso
+            </button>
+            <button
               onClick={() => navigate("/")}
               className="px-6 py-3 bg-[#0099DC] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
             >
@@ -523,11 +539,19 @@ export function CourseView() {
             </button>
           </motion.div>
         </motion.div>
+
+        {/* Badge celebration overlay on top of completion screen */}
+        <BadgeCelebrationOverlay
+          badge={activeEarnedBadge}
+          hasMoreBadges={earnedBadgeQueue.length > 0}
+          onClose={() => setActiveEarnedBadge(null)}
+        />
       </div>
     );
   }
 
   const currentLesson = getCurrentLesson();
+  const currentLessonHasQuiz = currentLesson?.has_quiz ?? false;
   const allModules = getAllModules();
   const sidebarContent = (
     <>
@@ -567,6 +591,22 @@ export function CourseView() {
               />
             </div>
           </div>
+        )}
+
+        {/* Certification button */}
+        {hasCertification && course.enrollment?.status === "completed" && (
+          <button
+            onClick={() => setShowCertModal(true)}
+            className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-[1.02]"
+            style={{
+              background: "linear-gradient(135deg, #E5A800, #F5D060)",
+              color: "#1C3A5C",
+              boxShadow: "0 4px 12px rgba(229,168,0,0.25)",
+            }}
+          >
+            <Award size={16} />
+            Obtener Certificación
+          </button>
         )}
       </div>
 
@@ -625,10 +665,13 @@ export function CourseView() {
                         )}
 
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium truncate ${
+                          <p className={`text-sm font-medium truncate flex items-center gap-1.5 ${
                             isActive ? "text-[#0099DC]" : "text-gray-700"
                           }`}>
                             {lesson.title}
+                            {lesson.has_quiz && (
+                              <ClipboardCheck size={12} className="shrink-0" style={{ color: "#E5A800" }} />
+                            )}
                           </p>
                           <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                             <Clock size={10} />
@@ -786,12 +829,70 @@ export function CourseView() {
                   />
                 ))}
               </div>
+            ) : currentLessonHasQuiz ? (
+              /* Quiz-only lesson: show quiz as the main content */
+              <div className="max-w-5xl mx-auto">
+                {courseId && currentLessonId && (
+                  <QuizGate
+                    courseId={courseId}
+                    lessonId={currentLessonId}
+                    onQuizPassed={() => {
+                      if (currentLessonId) fetchLessonDetail(currentLessonId);
+                      // Auto-mark lesson as completed
+                      updateProgress(100, "completed");
+                    }}
+                  />
+                )}
+              </div>
             ) : (
               <div className="max-w-5xl mx-auto">
                 <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
                   <BookOpen size={48} className="mx-auto text-gray-300 mb-4" />
                   <h3 className="text-lg font-semibold text-gray-700 mb-2">No hay recursos disponibles</h3>
                   <p className="text-gray-500">Esta lección no tiene recursos aún.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Quiz Gate for lessons WITH resources (quiz after resources) */}
+            {currentLessonDetail.resources && currentLessonDetail.resources.length > 0 && courseId && currentLessonId && (
+              <div className="max-w-5xl mx-auto mt-6">
+                <QuizGate
+                  courseId={courseId}
+                  lessonId={currentLessonId}
+                  onQuizPassed={() => {
+                    if (currentLessonId) fetchLessonDetail(currentLessonId);
+                    // Auto-mark lesson as completed
+                    updateProgress(100, "completed");
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Lesson Gems */}
+            {lessonGems.length > 0 && (
+              <div className="max-w-5xl mx-auto mt-6">
+                <div className="bg-white rounded-2xl border border-gray-100 p-5" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: "rgba(0, 153, 220, 0.1)" }}>
+                      <Sparkles size={16} color="#0099DC" />
+                    </div>
+                    <h3 className="text-sm font-semibold" style={{ color: "#1C3A5C" }}>Gemas sugeridas para esta lección</h3>
+                  </div>
+                  <div className="flex gap-3 overflow-x-auto pb-1">
+                    {lessonGems.map((gem) => (
+                      <button
+                        key={gem.id}
+                        onClick={() => navigate(`/gems/${gem.id}`)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-gray-50 hover:bg-blue-50 transition-colors shrink-0"
+                        style={{ border: "1px solid rgba(0,0,0,0.06)" }}
+                      >
+                        <Sparkles size={14} color="#0099DC" />
+                        <span className="text-sm font-medium" style={{ color: "#1C3A5C" }}>{gem.title}</span>
+                        {gem.is_saved && <Bookmark size={12} fill="#E5A800" color="#E5A800" />}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -844,6 +945,41 @@ export function CourseView() {
         </div>
       )}
       </div>
+
+      {/* Certification Modal */}
+      <AnimatePresence>
+        {showCertModal && courseId && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCertModal(false)}
+              className="fixed inset-0 bg-black/50 z-[90]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed inset-0 z-[91] flex items-center justify-center p-4"
+              onClick={() => setShowCertModal(false)}
+            >
+              <div
+                className="w-full max-w-lg"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <CertificationCard courseId={courseId} courseCompleted={course?.enrollment?.status === "completed"} />
+                <button
+                  onClick={() => setShowCertModal(false)}
+                  className="w-full mt-3 py-2.5 text-sm font-medium text-white/70 hover:text-white transition-colors"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

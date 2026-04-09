@@ -6,17 +6,9 @@ export interface User {
   first_name: string;
   last_name: string;
   status: string;
-  // Mock properties to match existing components temporarily
-  avatar?: string;
-  department?: string;
-  role?: string;
-  points?: number;
-  completedCourses?: number;
-  totalHours?: number;
-  rank?: number;
-  streak?: number;
-  avgScore?: number;
-  badges?: any[];
+  area_name: string | null;
+  role_name: string | null;
+  created_at: string | null;
 }
 
 interface AuthContextType {
@@ -37,23 +29,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch('/api/v1/auth/me');
       if (response.ok) {
-        const userData = await response.json();
-        // Add default/mock values for missing fields to avoid breaking components
-        const fullUser = {
-          ...userData,
-          avatar: "https://via.placeholder.com/150",
-          department: "General",
-          role: "Learner",
-          points: 0,
-          completedCourses: 0,
-          totalHours: 0,
-          rank: 0,
-          streak: 0,
-          avgScore: 0,
-          badges: []
-        };
-        setUser(fullUser);
-        return fullUser;
+        const userData: User = await response.json();
+        setUser(userData);
+        return userData;
       } else {
         setUser(null);
         return null;
@@ -84,7 +62,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (response.ok) {
-        // Wait for user data to be fetched before returning
         const user = await fetchUser();
         return user;
       } else {
@@ -104,7 +81,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Logout failed', error);
     } finally {
       setUser(null);
-      // Optional: clear local state or redirect logic is handled by consumer
     }
   };
 

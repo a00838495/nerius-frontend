@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../hooks/useAuth";
+import GemRecommendations from "../components/GemRecommendations";
 
 function ProgressBar({ value, color = "#0099DC", animate = true, height = 6 }: {
   value: number; color?: string; animate?: boolean; height?: number;
@@ -84,6 +85,7 @@ interface CourseExpandedDetail {
     status: string;
     progress_percent: number;
   } | null;
+  has_certification?: boolean;
 }
 
 interface PendingAssignedCourse {
@@ -781,6 +783,12 @@ export function Home() {
   const expandedCoursePreview = expandedCourseId
     ? recommendedCourses.find(course => course.id === expandedCourseId) ?? null
     : null;
+  const expandedCourseIsCompleted = !!(
+    expandedCourseDetail?.is_enrolled && (
+      expandedCourseDetail.enrollment?.status === "completed" ||
+      (expandedCourseDetail.enrollment?.progress_percent ?? 0) >= 100
+    )
+  );
   
   // Calculate which courses to show in dots based on current index
   const getVisibleDotRange = () => {
@@ -1191,6 +1199,9 @@ export function Home() {
                 </div>
               </section>
             )}
+
+            {/* Gem Recommendations */}
+            <GemRecommendations />
           </div>
 
           {/* Sidebar */}
@@ -1418,13 +1429,29 @@ export function Home() {
                             <span
                               className="rounded-full px-3 py-1 text-xs font-semibold"
                               style={{
-                                backgroundColor: expandedCourseDetail.is_enrolled ? "rgba(74,138,44,0.92)" : "rgba(255,255,255,0.16)",
+                                backgroundColor: expandedCourseDetail.is_enrolled
+                                  ? expandedCourseIsCompleted
+                                    ? "rgba(74,138,44,0.92)"
+                                    : "rgba(0,153,220,0.92)"
+                                  : "rgba(255,255,255,0.16)",
                                 color: "#FFFFFF",
                                 border: expandedCourseDetail.is_enrolled ? "none" : "1px solid rgba(255,255,255,0.16)",
                               }}
                             >
-                              {expandedCourseDetail.is_enrolled ? "Inscrito" : "Recomendado"}
+                              {expandedCourseDetail.is_enrolled
+                                ? expandedCourseIsCompleted
+                                  ? "Completado"
+                                  : "Inscrito"
+                                : "Recomendado"}
                             </span>
+                            {expandedCourseDetail.has_certification && (
+                              <span
+                                className="rounded-full px-3 py-1 text-xs font-semibold text-white flex items-center gap-1"
+                                style={{ backgroundColor: "rgba(229,168,0,0.92)" }}
+                              >
+                                <Award size={11} /> Certificación
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -1520,7 +1547,11 @@ export function Home() {
                                 className="rounded-2xl px-5 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
                                 style={{ background: "linear-gradient(135deg, #0099DC 0%, #1C3A5C 100%)" }}
                               >
-                                {expandedCourseDetail.is_enrolled ? "Continuar aprendizaje" : "Inscribirme ahora"}
+                                {expandedCourseDetail.is_enrolled
+                                  ? expandedCourseIsCompleted
+                                    ? "Repasar"
+                                    : "Continuar aprendizaje"
+                                  : "Inscribirme ahora"}
                               </button>
                             </div>
                           </div>

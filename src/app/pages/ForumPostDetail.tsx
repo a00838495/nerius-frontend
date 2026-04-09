@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../hooks/useAuth";
+import GemMentionRenderer from "../components/GemMentionRenderer";
+import GemMentionInput from "../components/GemMentionInput";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -420,7 +422,7 @@ export function ForumPostDetail() {
           className="text-gray-700 whitespace-pre-wrap"
           style={{ lineHeight: "1.7" }}
         >
-          {post.content}
+          <GemMentionRenderer text={post.content} />
         </div>
       </motion.article>
 
@@ -442,16 +444,16 @@ export function ForumPostDetail() {
 
         {/* Comment Form */}
         <form onSubmit={handleSubmitComment} className="mb-8">
-          <textarea
+          <GemMentionInput
             value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Escribe un comentario..."
+            onChange={setNewComment}
+            placeholder="Escribe un comentario... (usa @gem para mencionar una gema)"
             rows={4}
             maxLength={5000}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#0099DC] focus:ring-2 focus:ring-[#0099DC]/20 transition-all resize-none"
             style={{ fontFamily: "'Open Sans', sans-serif" }}
           />
-          
+
           <div className="flex items-center justify-between mt-3">
             <span className="text-sm text-gray-500">
               {newComment.length} / 5000 caracteres
@@ -639,7 +641,7 @@ function CommentItem({
             </div>
 
             <p className="text-gray-700 mb-3 whitespace-pre-wrap">
-              {comment.content}
+              <GemMentionRenderer text={comment.content} />
             </p>
 
             <div className="flex items-center gap-4">
@@ -701,10 +703,10 @@ function CommentItem({
                     </button>
                   </div>
 
-                  <textarea
+                  <GemMentionInput
                     value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Escribe tu respuesta..."
+                    onChange={setReplyText}
+                    placeholder="Escribe tu respuesta... (usa @gem para mencionar una gema)"
                     rows={3}
                     maxLength={5000}
                     autoFocus

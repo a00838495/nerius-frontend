@@ -13,11 +13,11 @@ import {
   Search,
   Bell,
   ChevronDown,
-  Zap,
   Menu,
   X,
   LogOut,
   MessageSquare,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import whirlpoolLogo from "../../assets/c1344ad5145e3dcee746b700b0a6ef41f0a04829.png";
@@ -28,9 +28,9 @@ const navItems = [
   { path: "/", label: "Inicio", icon: Home, exact: true },
   { path: "/learning", label: "Aprendizaje", icon: BookOpen },
   { path: "/forum", label: "Foro", icon: MessageSquare },
+  { path: "/gems", label: "Gemas", icon: Sparkles },
   { path: "/progress", label: "Mi Progreso", icon: TrendingUp },
   { path: "/profile", label: "Perfil", icon: User },
-  { path: "/search", label: "Buscar", icon: Search },
 ];
 
 export function Layout() {
@@ -48,6 +48,9 @@ export function Layout() {
   }, []);
 
   if (!user) return null;
+
+  const userName = `${user.first_name} ${user.last_name}`.trim();
+  const generatedAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0099DC&color=fff&size=64`;
 
   return (
     <div
@@ -111,26 +114,6 @@ export function Layout() {
 
             {/* Right Actions */}
             <div className="flex items-center gap-3">
-              {/* Points badge */}
-              <div
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-                style={{
-                  backgroundColor: "rgba(229, 168, 0, 0.2)",
-                  border: "1px solid rgba(229, 168, 0, 0.4)",
-                }}
-              >
-                <Zap size={12} color="#E5A800" />
-                <span
-                  style={{
-                    color: "#E5A800",
-                    fontWeight: 600,
-                    fontSize: "0.8rem",
-                  }}
-                >
-                  {(user.points || 0).toLocaleString()} pts
-                </span>
-              </div>
-
               {/* Notification */}
               {/* <button
                 className="relative w-9 h-9 rounded-[10px] flex items-center justify-center transition-all duration-200 hover:bg-black/5"
@@ -150,7 +133,7 @@ export function Layout() {
                 title="Go to Profile"
               >
                 <img
-                  src={user.avatar}
+                  src={generatedAvatar}
                   alt={user.first_name}
                   className="w-7 h-7 rounded-full object-cover transition-transform duration-200 group-hover/avatar:scale-110"
                   style={{ border: "2px solid #E5A800" }}
