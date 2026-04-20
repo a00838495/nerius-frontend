@@ -23,6 +23,7 @@ import { useAuth } from "../hooks/useAuth";
 import whirlpoolLogo from "../../assets/c1344ad5145e3dcee746b700b0a6ef41f0a04829.png";
 import { Button } from "./ui/button";
 import { Toaster } from "./ui/sonner";
+import { PanelSwitcher } from "./PanelSwitcher";
 
 const navItems = [
   { path: "/", label: "Inicio", icon: Home, exact: true },
@@ -147,10 +148,15 @@ export function Layout() {
                 <ChevronDown size={12} color="#89B8D4" />
               </button>
               
+               {/* Panel Switcher (only visible for admins/superadmins) */}
+               <div className="hidden md:flex">
+                 <PanelSwitcher />
+               </div>
+
                {/* Desktop Logout - Simplified for now */}
-               <Button 
-                variant="ghost" 
-                size="icon" 
+               <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => logout()}
                 title="Logout"
                 className="hidden md:flex"

@@ -8,6 +8,7 @@ export interface User {
   status: string;
   area_name: string | null;
   role_name: string | null;
+  role_names: string[];
   created_at: string | null;
 }
 
@@ -29,7 +30,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch('/api/v1/auth/me');
       if (response.ok) {
-        const userData: User = await response.json();
+        const data = await response.json();
+        const userData: User = {
+          ...data,
+          role_names: Array.isArray(data.role_names) ? data.role_names : (data.role_name ? [data.role_name] : []),
+        };
         setUser(userData);
         return userData;
       } else {
