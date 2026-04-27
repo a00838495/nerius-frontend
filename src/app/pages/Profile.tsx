@@ -33,7 +33,7 @@ export function Profile() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="rounded-2xl overflow-hidden mb-6"
-        style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }}
+        style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}
       >
         {/* Cover */}
         <div
@@ -46,7 +46,7 @@ export function Profile() {
           />
           <div
             className="absolute inset-0"
-            style={{ background: "linear-gradient(to bottom, rgba(13,35,64,0.18) 0%, rgba(13,35,64,0.35) 55%, rgba(255,255,255,1) 100%)" }}
+            style={{ background: "linear-gradient(to bottom, rgba(13,35,64,0.18) 10%, rgba(13,35,64,0.35) 50%, rgba(255,255,255,1) 100%)" }}
           />
           {/* Edit button */}
           <button
@@ -58,12 +58,12 @@ export function Profile() {
             }}
             onClick={() => setEditing(!editing)}
           >
-            <Edit2 size={13} /> {editing ? "Save Profile" : "Edit Profile"}
+            <Edit2 size={13} /> {editing ? "Saves Profile" : "Edit Profile"}
           </button>
         </div>
 
         {/* Profile Info */}
-        <div className="bg-white px-6 lg:px-10 pb-6">
+        <div className="relative z-10 bg-white px-6 lg:px-10 pb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-14 mb-4">
             {/* Avatar */}
             <div className="relative">
