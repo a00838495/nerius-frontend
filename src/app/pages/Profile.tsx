@@ -1,16 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import {
   Edit2, Camera, Mail, Building2, BookOpen, Clock, Zap, Trophy,
   MapPin, Calendar, Shield, TrendingUp, User as UserIcon, Flame,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
+import { toast } from "sonner";
 import coverImage from "../../assets/7fd3dad4efe18ada7c508db557505a6fb72bb193.png";
 
 export function Profile() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "history">("overview");
+  const [formData, setFormData] = useState({ first_name: "", last_name: "" });
+
+  useEffect(() => {
+    if (user) {
+      setFormData({ first_name: user.first_name, last_name: user.last_name });
+    }
+  }, [user]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateProfile(formData);
+      setEditing(false);
+      toast.success("Perfil actualizado correctamente");
+    } catch (err: any) {
+      toast.error(err.message || "Error al guardar");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (!user) {
     return (
@@ -49,17 +71,49 @@ export function Profile() {
             style={{ background: "linear-gradient(to bottom, rgba(13,35,64,0.18) 10%, rgba(13,35,64,0.35) 50%, rgba(255,255,255,1) 100%)" }}
           />
           {/* Edit button */}
-          <button
-            className="absolute top-4 right-4 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-white/20"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.12)",
-              color: "#FFFFFF",
-              border: "1px solid rgba(255,255,255,0.2)",
-            }}
-            onClick={() => setEditing(!editing)}
-          >
-            <Edit2 size={13} /> {editing ? "Saves Profile" : "Edit Profile"}
-          </button>
+          {editing ? (
+            <div className="absolute top-4 right-4 flex items-center gap-2">
+              <button
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.15)",
+                  color: "#FFFFFF",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                }}
+                onClick={() => {
+                  setFormData({ first_name: user.first_name, last_name: user.last_name });
+                  setEditing(false);
+                }}
+                disabled={saving}
+              >
+                Cancelar
+              </button>
+              <button
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 disabled:opacity-60"
+                style={{
+                  backgroundColor: "#E5A800",
+                  color: "#FFFFFF",
+                  border: "1px solid transparent",
+                }}
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? "Guardando…" : "Guardar"}
+              </button>
+            </div>
+          ) : (
+            <button
+              className="absolute top-4 right-4 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-white/20"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.12)",
+                color: "#FFFFFF",
+                border: "1px solid rgba(255,255,255,0.2)",
+              }}
+              onClick={() => setEditing(true)}
+            >
+              <Edit2 size={13} /> Edit Profile
+            </button>
+          )}
         </div>
 
         {/* Profile Info */}
@@ -196,36 +250,74 @@ export function Profile() {
                Información Personal
              </h2>
             <div className="space-y-4">
-              {[
-                { label: "Nombre Completo", value: userName, icon: null },
-                { label: "Correo Electrónico", value: user.email, icon: Mail },
-                { label: "Departamento", value: user.department || 'No especificado', icon: Building2 },
-                { label: "Rol", value: user.role || 'No especificado', icon: Shield },
-              ].map(({ label, value, icon: Icon }) => (
-                <div key={label}>
-                  <label style={{ fontSize: "0.75rem", fontFamily: "'Open Sans', sans-serif", fontWeight: 600, color: "#9AA5B4", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    {label}
-                  </label>
-                  <div
-                    className="flex items-center gap-2 mt-1 px-3 py-2.5 rounded-xl"
-                    style={{
-                      backgroundColor: editing ? "#FFFFFF" : "#F9FAFB",
-                      border: `1.5px solid ${editing ? "#0099DC" : "#E8EAED"}`,
-                    }}
-                  >
-                    {Icon && <Icon size={14} color="#9AA5B4" />}
-                    {editing ? (
-                      <input
-                        defaultValue={value}
-                        className="flex-1 bg-transparent outline-none text-sm"
-                        style={{ color: "#1A2332", fontFamily: "'Open Sans', sans-serif" }}
-                      />
-                    ) : (
-                      <span style={{ fontSize: "0.9rem", color: "#1A2332" }}>{value}</span>
-                    )}
-                  </div>
+              {/* Nombre */}
+              <div>
+                <label style={{ fontSize: "0.75rem", fontFamily: "'Open Sans', sans-serif", fontWeight: 600, color: "#9AA5B4", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Nombre
+                </label>
+                <div
+                  className="flex items-center gap-2 mt-1 px-3 py-2.5 rounded-xl"
+                  style={{ backgroundColor: editing ? "#FFFFFF" : "#F9FAFB", border: `1.5px solid ${editing ? "#0099DC" : "#E8EAED"}` }}
+                >
+                  {editing ? (
+                    <input
+                      value={formData.first_name}
+                      onChange={(e) => setFormData((p) => ({ ...p, first_name: e.target.value }))}
+                      className="flex-1 bg-transparent outline-none text-sm"
+                      style={{ color: "#1A2332", fontFamily: "'Open Sans', sans-serif" }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: "0.9rem", color: "#1A2332" }}>{user.first_name}</span>
+                  )}
                 </div>
-              ))}
+              </div>
+              {/* Apellido */}
+              <div>
+                <label style={{ fontSize: "0.75rem", fontFamily: "'Open Sans', sans-serif", fontWeight: 600, color: "#9AA5B4", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Apellido
+                </label>
+                <div
+                  className="flex items-center gap-2 mt-1 px-3 py-2.5 rounded-xl"
+                  style={{ backgroundColor: editing ? "#FFFFFF" : "#F9FAFB", border: `1.5px solid ${editing ? "#0099DC" : "#E8EAED"}` }}
+                >
+                  {editing ? (
+                    <input
+                      value={formData.last_name}
+                      onChange={(e) => setFormData((p) => ({ ...p, last_name: e.target.value }))}
+                      className="flex-1 bg-transparent outline-none text-sm"
+                      style={{ color: "#1A2332", fontFamily: "'Open Sans', sans-serif" }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: "0.9rem", color: "#1A2332" }}>{user.last_name}</span>
+                  )}
+                </div>
+              </div>
+              {/* Correo (solo lectura) */}
+              <div>
+                <label style={{ fontSize: "0.75rem", fontFamily: "'Open Sans', sans-serif", fontWeight: 600, color: "#9AA5B4", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Correo Electrónico
+                </label>
+                <div
+                  className="flex items-center gap-2 mt-1 px-3 py-2.5 rounded-xl"
+                  style={{ backgroundColor: "#F9FAFB", border: "1.5px solid #E8EAED" }}
+                >
+                  <Mail size={14} color="#9AA5B4" />
+                  <span style={{ fontSize: "0.9rem", color: "#1A2332" }}>{user.email}</span>
+                </div>
+              </div>
+              {/* Departamento (solo lectura) */}
+              <div>
+                <label style={{ fontSize: "0.75rem", fontFamily: "'Open Sans', sans-serif", fontWeight: 600, color: "#9AA5B4", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Departamento
+                </label>
+                <div
+                  className="flex items-center gap-2 mt-1 px-3 py-2.5 rounded-xl"
+                  style={{ backgroundColor: "#F9FAFB", border: "1.5px solid #E8EAED" }}
+                >
+                  <Building2 size={14} color="#9AA5B4" />
+                  <span style={{ fontSize: "0.9rem", color: "#1A2332" }}>{user.department || 'No especificado'}</span>
+                </div>
+              </div>
             </div>
           </div>
 

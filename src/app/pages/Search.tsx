@@ -132,7 +132,7 @@ export function Search() {
           Find Your Next Course
         </h1>
         <p style={{ color: "#6B7A8D", marginTop: "0.6rem", fontSize: "0.95rem", fontFamily: "'Open Sans', sans-serif", fontWeight: 400 }}>
-          Search across {allCourses.length} courses — works even with typos or missing accents
+          Search across {allCourses.length} courses — find your favorite classes
         </p>
       </div>
 
