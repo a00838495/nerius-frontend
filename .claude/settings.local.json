@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m alembic upgrade head)",
+      "Bash(python -m alembic stamp 1fc71d78241b)",
+      "Bash(python -c \"import sqlite3; conn = sqlite3.connect\\('app.db'\\); print\\([col[1] for col in conn.execute\\('PRAGMA table_info\\(forum_posts\\)'\\).fetchall\\(\\)]\\); conn.close\\(\\)\")"
+    ]
+  }
+}
