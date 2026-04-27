@@ -22,6 +22,7 @@ import { useAuth } from "../hooks/useAuth";
 import whirlpoolLogo from "../../assets/c1344ad5145e3dcee746b700b0a6ef41f0a04829.png";
 import { Button } from "./ui/button";
 import { Toaster } from "./ui/sonner";
+import { ChatBot } from "./ChatBot";
 
 const navItems = [
   { path: "/", label: "Inicio", icon: Home, exact: true },
@@ -245,6 +246,9 @@ export function Layout() {
       
       {/* Toast Notifications */}
       <Toaster />
+
+      {/* AI Chat Assistant */}
+      <ChatBot />
     </div>
   );
 }
