@@ -93,7 +93,7 @@ export function ChatBot() {
                 </div>
                 <div>
                   <p className="text-white text-sm font-semibold leading-tight">
-                    Romina
+                    PEJELAGARTO
                   </p>
                   <p
                     className="text-xs leading-tight"
@@ -126,7 +126,7 @@ export function ChatBot() {
                     className="self-start max-w-[88%] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm leading-relaxed"
                     style={{ backgroundColor: "#FFFFFF", color: "#1A2332" }}
                   >
-                    ¡Hola! Soy Romina, tu asistente de Whirlpool Learning.
+                    ¡Hola! Soy Pejelagarto, tu asistente de Whirlpool Learning.
                     ¿En qué puedo ayudarte? 👋
                   </div>
 

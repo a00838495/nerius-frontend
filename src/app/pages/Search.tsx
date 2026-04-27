@@ -1,7 +1,25 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Search as SearchIcon, Clock, BookOpen, Play, Star, X, TrendingUp, Sparkles } from "lucide-react";
-import { courses } from "../data/mockData";
+import { Search as SearchIcon, Clock, BookOpen, Play, X, TrendingUp, Sparkles } from "lucide-react";
+
+interface CourseCard {
+  id: string;
+  title: string;
+  description: string | null;
+  cover_url: string | null;
+  estimated_minutes: number | null;
+  modules_count: number;
+  lessons_count: number;
+  area: { id: string; name: string } | null;
+  is_enrolled: boolean;
+  enrollment: {
+    id: string;
+    course_id: string;
+    status: string;
+    progress_percent: number;
+  } | null;
+  has_certification: boolean;
+}
 
 const suggestions = [
   "Machine Learning",
@@ -21,46 +39,74 @@ const trendingSearches = [
   { label: "NLP", count: "812 learners" },
 ];
 
-const levelColors: Record<string, { bg: string; text: string; border: string }> = {
-  Beginner: { bg: "#EBF7EB", text: "#2E7D32", border: "#A5D6A7" },
-  Intermediate: { bg: "#E3F2FD", text: "#1565C0", border: "#90CAF9" },
-  Advanced: { bg: "#FFF3E0", text: "#E65100", border: "#FFCC80" },
-};
+function formatDuration(minutes: number | null): string {
+  if (!minutes) return "—";
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function CoursePlaceholder({ title }: { title: string }) {
+  return (
+    <div
+      className="w-full h-full flex items-center justify-center"
+      style={{ backgroundColor: "#E8EAED" }}
+    >
+      <span style={{ fontSize: "0.65rem", color: "#9AA5B4", textAlign: "center", padding: "4px" }}>
+        {title.slice(0, 2).toUpperCase()}
+      </span>
+    </div>
+  );
+}
 
 export function Search() {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [results, setResults] = useState<CourseCard[]>([]);
+  const [allCourses, setAllCourses] = useState<CourseCard[]>([]);
+  const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
+    fetch("/api/v1/courses?limit=50", { credentials: "include" })
+      .then((r) => r.json())
+      .then((data: CourseCard[]) => setAllCourses(Array.isArray(data) ? data : []))
+      .catch(() => {});
   }, []);
 
   const filteredSuggestions = query
     ? suggestions.filter((s) => s.toLowerCase().includes(query.toLowerCase()))
     : suggestions;
 
-  const results = query
-    ? courses.filter(
-        (c) =>
-          c.title.toLowerCase().includes(query.toLowerCase()) ||
-          c.category.toLowerCase().includes(query.toLowerCase()) ||
-          c.level.toLowerCase().includes(query.toLowerCase()) ||
-          c.tags.some((t) => t.toLowerCase().includes(query.toLowerCase()))
-      )
-    : [];
+  const runSearch = useCallback(async (term: string) => {
+    if (!term.trim()) return;
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `/api/v1/courses?search=${encodeURIComponent(term.trim())}&limit=50`,
+        { credentials: "include" }
+      );
+      const data: CourseCard[] = await res.json();
+      setResults(Array.isArray(data) ? data : []);
+    } catch {
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const handleSearch = (value: string) => {
     setQuery(value);
     setHasSearched(true);
     setFocused(false);
+    runSearch(value);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSearch(query);
-    }
+    if (e.key === "Enter") handleSearch(query);
   };
 
   return (
@@ -86,7 +132,7 @@ export function Search() {
           Find Your Next Course
         </h1>
         <p style={{ color: "#6B7A8D", marginTop: "0.6rem", fontSize: "0.95rem", fontFamily: "'Open Sans', sans-serif", fontWeight: 400 }}>
-          Search across {courses.length} AI courses tailored for Whirlpool professionals
+          Search across {allCourses.length} courses — works even with typos or missing accents
         </p>
       </div>
 
@@ -116,15 +162,11 @@ export function Search() {
               onKeyDown={handleKeyDown}
               placeholder="Search courses, topics, skills..."
               className="flex-1 bg-transparent outline-none"
-              style={{
-                fontSize: "1rem",
-                color: "#1A2332",
-                fontFamily: "'Open Sans', sans-serif",
-              }}
+              style={{ fontSize: "1rem", color: "#1A2332", fontFamily: "'Open Sans', sans-serif" }}
             />
             {query && (
               <button
-                onClick={() => { setQuery(""); setHasSearched(false); }}
+                onClick={() => { setQuery(""); setHasSearched(false); setResults([]); }}
                 className="w-6 h-6 rounded-full flex items-center justify-center ml-2"
                 style={{ backgroundColor: "#E8EAED" }}
               >
@@ -155,10 +197,7 @@ export function Search() {
                 }}
               >
                 <div className="p-2">
-                  <p
-                    className="px-3 py-2"
-                    style={{ color: "#9AA5B4", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" }}
-                  >
+                  <p className="px-3 py-2" style={{ color: "#9AA5B4", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" }}>
                     {query ? "Suggestions" : "Popular Topics"}
                   </p>
                   {filteredSuggestions.slice(0, 6).map((s) => (
@@ -167,10 +206,7 @@ export function Search() {
                       onMouseDown={() => handleSearch(s)}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-all text-left"
                     >
-                      <div
-                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: "rgba(0,153,220,0.08)" }}
-                      >
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "rgba(0,153,220,0.08)" }}>
                         <SearchIcon size={12} color="#0099DC" />
                       </div>
                       <span style={{ fontSize: "0.9rem", color: "#1A2332" }}>
@@ -198,27 +234,27 @@ export function Search() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
           >
-            {/* Results header */}
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h2
-                  style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 600, fontSize: "1.1rem", color: "#1A2332" }}
-                >
-                  {results.length > 0 ? `${results.length} result${results.length !== 1 ? "s" : ""} for ` : "No results for "}
-                  <span style={{ color: "#0099DC" }}>"{query}"</span>
+                <h2 style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 600, fontSize: "1.1rem", color: "#1A2332" }}>
+                  {loading
+                    ? "Searching..."
+                    : results.length > 0
+                      ? <>{results.length} result{results.length !== 1 ? "s" : ""} for <span style={{ color: "#0099DC" }}>"{query}"</span></>
+                      : <>No results for <span style={{ color: "#0099DC" }}>"{query}"</span></>
+                  }
                 </h2>
-                {results.length > 0 && (
-                  <p style={{ color: "#9AA5B4", fontSize: "0.82rem", marginTop: "0.2rem" }}>
-                    Showing best matches
-                  </p>
+                {!loading && results.length > 0 && (
+                  <p style={{ color: "#9AA5B4", fontSize: "0.82rem", marginTop: "0.2rem" }}>Showing best matches</p>
                 )}
               </div>
             </div>
 
-            {results.length > 0 ? (
+            {!loading && results.length > 0 ? (
               <div className="space-y-4">
                 {results.map((course, i) => {
-                  const levelStyle = levelColors[course.level];
+                  const progress = course.enrollment?.progress_percent ?? 0;
+                  const completed = course.enrollment?.status === "completed";
                   return (
                     <motion.div
                       key={course.id}
@@ -227,24 +263,16 @@ export function Search() {
                       transition={{ delay: i * 0.07 }}
                       whileHover={{ x: 4 }}
                       className="flex items-center gap-5 p-5 rounded-2xl cursor-pointer transition-all duration-200"
-                      style={{
-                        backgroundColor: "#FFFFFF",
-                        border: "1px solid #E8EAED",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-                      }}
+                      style={{ backgroundColor: "#FFFFFF", border: "1px solid #E8EAED", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}
                     >
                       {/* Image */}
                       <div className="relative flex-shrink-0 rounded-xl overflow-hidden" style={{ width: 80, height: 80 }}>
-                        <img
-                          src={course.image}
-                          alt={course.title}
-                          className="w-full h-full object-cover"
-                        />
-                        {course.completed && (
-                          <div
-                            className="absolute inset-0 flex items-center justify-center"
-                            style={{ backgroundColor: "rgba(74, 138, 44, 0.7)" }}
-                          >
+                        {course.cover_url
+                          ? <img src={course.cover_url} alt={course.title} className="w-full h-full object-cover" />
+                          : <CoursePlaceholder title={course.title} />
+                        }
+                        {completed && (
+                          <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: "rgba(74,138,44,0.7)" }}>
                             <span style={{ fontSize: "1.4rem" }}>✓</span>
                           </div>
                         )}
@@ -253,48 +281,41 @@ export function Search() {
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <span
-                            className="px-2 py-0.5 rounded-full text-xs font-medium"
-                            style={{
-                              backgroundColor: levelStyle.bg,
-                              color: levelStyle.text,
-                              border: `1px solid ${levelStyle.border}`,
-                            }}
-                          >
-                            {course.level}
-                          </span>
-                          <span style={{ fontSize: "0.75rem", color: "#9AA5B4" }}>{course.category}</span>
+                          {course.area && (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: "#E3F2FD", color: "#1565C0", border: "1px solid #90CAF9" }}>
+                              {course.area.name}
+                            </span>
+                          )}
+                          {course.has_certification && (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: "#FFF8E1", color: "#F9A825", border: "1px solid #FFE082" }}>
+                              Certificate
+                            </span>
+                          )}
                         </div>
-                        <h3
-                           style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 700, fontSize: "1rem", color: "#1A2332" }}
-                         >
-                           {course.title}
-                         </h3>
-                         <p style={{ color: "#6B7A8D", fontFamily: "'Open Sans', sans-serif", fontWeight: 400, fontSize: "0.82rem", marginTop: "0.2rem" }} className="line-clamp-1">
-                           {course.subtitle}
-                         </p>
+                        <h3 style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 700, fontSize: "1rem", color: "#1A2332" }}>
+                          {course.title}
+                        </h3>
+                        <p style={{ color: "#6B7A8D", fontFamily: "'Open Sans', sans-serif", fontWeight: 400, fontSize: "0.82rem", marginTop: "0.2rem" }} className="line-clamp-1">
+                          {course.description || "No description available"}
+                        </p>
                         <div className="flex flex-wrap items-center gap-3 mt-2" style={{ color: "#9AA5B4", fontSize: "0.78rem" }}>
-                          <span className="flex items-center gap-1"><Clock size={12} /> {course.duration}</span>
-                          <span className="flex items-center gap-1"><BookOpen size={12} /> {course.modules} modules</span>
-                          <span className="flex items-center gap-1"><Star size={11} color="#E5A800" fill="#E5A800" /> {course.rating}</span>
+                          <span className="flex items-center gap-1"><Clock size={12} /> {formatDuration(course.estimated_minutes)}</span>
+                          <span className="flex items-center gap-1"><BookOpen size={12} /> {course.modules_count} modules</span>
                         </div>
                       </div>
 
-                      {/* Progress */}
-                      {course.progress > 0 && !course.completed && (
+                      {/* Progress ring */}
+                      {progress > 0 && !completed && (
                         <div className="hidden sm:block text-center" style={{ minWidth: 80 }}>
-                          <div
-                            className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-1 relative"
-                            style={{ border: "3px solid #E8EAED" }}
-                          >
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-1 relative" style={{ border: "3px solid #E8EAED" }}>
                             <svg className="absolute inset-0" width="48" height="48" viewBox="0 0 48 48">
                               <circle cx="24" cy="24" r="20" fill="none" stroke="#0099DC" strokeWidth="3"
-                                strokeDasharray={`${2 * Math.PI * 20 * course.progress / 100} ${2 * Math.PI * 20}`}
+                                strokeDasharray={`${2 * Math.PI * 20 * progress / 100} ${2 * Math.PI * 20}`}
                                 strokeDashoffset={2 * Math.PI * 20 * 0.25}
                                 strokeLinecap="round"
                               />
                             </svg>
-                            <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#0099DC" }}>{course.progress}%</span>
+                            <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#0099DC" }}>{Math.round(progress)}%</span>
                           </div>
                           <span style={{ fontSize: "0.7rem", color: "#9AA5B4" }}>In progress</span>
                         </div>
@@ -304,43 +325,28 @@ export function Search() {
                       <button
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 hover:opacity-90 flex-shrink-0"
                         style={{
-                          backgroundColor: course.completed ? "#F4F6F9" : course.progress > 0 ? "#0099DC" : "#1C3A5C",
-                          color: course.completed ? "#4A8A2C" : "#FFFFFF",
-                          border: course.completed ? "1px solid #A5D6A7" : "none",
+                          backgroundColor: completed ? "#F4F6F9" : progress > 0 ? "#0099DC" : "#1C3A5C",
+                          color: completed ? "#4A8A2C" : "#FFFFFF",
+                          border: completed ? "1px solid #A5D6A7" : "none",
                           minWidth: 100,
                           justifyContent: "center",
                         }}
                       >
-                        {course.completed ? (
-                          "Review"
-                        ) : (
-                          <><Play size={12} fill="white" /> {course.progress > 0 ? "Continue" : "Start"}</>
-                        )}
+                        {completed ? "Review" : <><Play size={12} fill="white" /> {progress > 0 ? "Continue" : "Start"}</>}
                       </button>
                     </motion.div>
                   );
                 })}
               </div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex flex-col items-center justify-center py-20"
-              >
-                <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-                  style={{ backgroundColor: "#F4F6F9" }}
-                >
+            ) : !loading && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-20">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ backgroundColor: "#F4F6F9" }}>
                   <SearchIcon size={28} color="#9AA5B4" />
                 </div>
-                <h3 style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 700, fontSize: "1.1rem", color: "#1A2332" }}>
-                  No courses found
-                </h3>
-                <p style={{ color: "#9AA5B4", fontSize: "0.9rem", marginTop: "0.5rem" }}>
-                  Try a different search term
-                </p>
+                <h3 style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 700, fontSize: "1.1rem", color: "#1A2332" }}>No courses found</h3>
+                <p style={{ color: "#9AA5B4", fontSize: "0.9rem", marginTop: "0.5rem" }}>Try a different search term</p>
                 <button
-                  onClick={() => { setQuery(""); setHasSearched(false); }}
+                  onClick={() => { setQuery(""); setHasSearched(false); setResults([]); }}
                   className="mt-4 px-5 py-2 rounded-xl text-sm font-medium hover:opacity-90 transition-all"
                   style={{ backgroundColor: "#0099DC", color: "#FFFFFF" }}
                 >
@@ -361,11 +367,7 @@ export function Search() {
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <TrendingUp size={16} color="#E5A800" />
-                  <h2
-                    style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 600, fontSize: "1rem", color: "#1A2332" }}
-                  >
-                    Trending Searches
-                  </h2>
+                  <h2 style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 600, fontSize: "1rem", color: "#1A2332" }}>Trending Searches</h2>
                 </div>
                 <div className="space-y-2">
                   {trendingSearches.map(({ label, count }) => (
@@ -373,16 +375,9 @@ export function Search() {
                       key={label}
                       onClick={() => handleSearch(label)}
                       className="w-full flex items-center gap-3 p-4 rounded-2xl hover:border-blue-200 transition-all text-left"
-                      style={{
-                        backgroundColor: "#FFFFFF",
-                        border: "1px solid #E8EAED",
-                        boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-                      }}
+                      style={{ backgroundColor: "#FFFFFF", border: "1px solid #E8EAED", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
                     >
-                      <div
-                        className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: "rgba(229,168,0,0.1)" }}
-                      >
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "rgba(229,168,0,0.1)" }}>
                         <TrendingUp size={14} color="#E5A800" />
                       </div>
                       <div className="flex-1">
@@ -398,11 +393,7 @@ export function Search() {
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <BookOpen size={16} color="#0099DC" />
-                  <h2
-                     style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 600, fontSize: "1rem", color: "#1A2332" }}
-                   >
-                     Browse by Topic
-                   </h2>
+                  <h2 style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 600, fontSize: "1rem", color: "#1A2332" }}>Browse by Topic</h2>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {suggestions.map((s) => (
@@ -410,12 +401,7 @@ export function Search() {
                       key={s}
                       onClick={() => handleSearch(s)}
                       className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:scale-105"
-                      style={{
-                        backgroundColor: "#FFFFFF",
-                        color: "#4A5568",
-                        border: "1px solid #E8EAED",
-                        boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-                      }}
+                      style={{ backgroundColor: "#FFFFFF", color: "#4A5568", border: "1px solid #E8EAED", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
                     >
                       {s}
                     </button>
@@ -424,42 +410,43 @@ export function Search() {
               </div>
             </div>
 
-            {/* Recent courses quick access */}
+            {/* All Courses quick access */}
             <div className="max-w-4xl mx-auto mt-10">
               <div className="flex items-center gap-2 mb-4">
-                <Clock size={16} color="#4A8A2C" />
-                <h2 style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 600, fontSize: "1rem", color: "#1A2332" }}>
-                  All Courses
-                </h2>
+                <BookOpen size={16} color="#4A8A2C" />
+                <h2 style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 600, fontSize: "1rem", color: "#1A2332" }}>All Courses</h2>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {courses.slice(0, 4).map((course) => {
-                  const levelStyle = levelColors[course.level];
-                  return (
-                    <button
-                      key={course.id}
-                      onClick={() => handleSearch(course.title)}
-                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-all text-left"
-                      style={{ backgroundColor: "#FFFFFF", border: "1px solid #E8EAED" }}
-                    >
-                      <img src={course.image} alt={course.title} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p style={{ fontWeight: 600, fontFamily: "'Open Sans', sans-serif", fontSize: "0.85rem", color: "#1A2332" }} className="truncate">
-                          {course.title}
-                        </p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span
-                            className="px-1.5 py-0.5 rounded text-xs"
-                            style={{ backgroundColor: levelStyle.bg, color: levelStyle.text }}
-                          >
-                            {course.level}
+                {allCourses.slice(0, 4).map((course) => (
+                  <button
+                    key={course.id}
+                    onClick={() => handleSearch(course.title)}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-all text-left"
+                    style={{ backgroundColor: "#FFFFFF", border: "1px solid #E8EAED" }}
+                  >
+                    <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
+                      {course.cover_url
+                        ? <img src={course.cover_url} alt={course.title} className="w-full h-full object-cover" />
+                        : <CoursePlaceholder title={course.title} />
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p style={{ fontWeight: 600, fontFamily: "'Open Sans', sans-serif", fontSize: "0.85rem", color: "#1A2332" }} className="truncate">
+                        {course.title}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {course.area && (
+                          <span className="px-1.5 py-0.5 rounded text-xs" style={{ backgroundColor: "#E3F2FD", color: "#1565C0" }}>
+                            {course.area.name}
                           </span>
-                          <span style={{ fontSize: "0.72rem", fontFamily: "'Nunito', sans-serif", fontWeight: 300, color: "#9AA5B4" }}>{course.duration}</span>
-                        </div>
+                        )}
+                        <span style={{ fontSize: "0.72rem", fontFamily: "'Nunito', sans-serif", fontWeight: 300, color: "#9AA5B4" }}>
+                          {formatDuration(course.estimated_minutes)}
+                        </span>
                       </div>
-                    </button>
-                  );
-                })}
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
           </motion.div>
