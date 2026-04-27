@@ -6,17 +6,9 @@ export interface User {
   first_name: string;
   last_name: string;
   status: string;
-  // Mock properties to match existing components temporarily
   avatar?: string;
   department?: string;
   role?: string;
-  points?: number;
-  completedCourses?: number;
-  totalHours?: number;
-  rank?: number;
-  streak?: number;
-  avgScore?: number;
-  badges?: any[];
 }
 
 interface AuthContextType {
@@ -43,15 +35,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const fullUser = {
           ...userData,
           avatar: userData.avatar ?? "",
-          department: "General",
-          role: "Learner",
-          points: 0,
-          completedCourses: 0,
-          totalHours: 0,
-          rank: 0,
-          streak: 0,
-          avgScore: 0,
-          badges: []
+          department: userData.area_name ?? "General",
+          role: userData.role_name ?? "Learner",
         };
         setUser(fullUser);
         return fullUser;

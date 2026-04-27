@@ -1,12 +1,38 @@
 import { useState, useEffect } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
-  Edit2, Camera, Mail, Building2, BookOpen, Clock, Zap, Trophy,
-  MapPin, Calendar, Shield, TrendingUp, User as UserIcon, Flame,
+  Edit2, Camera, Mail, Building2, BookOpen, Clock, Trophy,
+  Calendar, Shield, TrendingUp, Gem, Check, Star, Award,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { toast } from "sonner";
 import coverImage from "../../assets/7fd3dad4efe18ada7c508db557505a6fb72bb193.png";
+
+interface ProfileStats {
+  completed_courses: number;
+  enrolled_courses: number;
+  total_hours: number;
+  rank: number | null;
+  badges_count: number;
+  saved_gems_count: number;
+}
+
+const EMPTY_STATS: ProfileStats = {
+  completed_courses: 0,
+  enrolled_courses: 0,
+  total_hours: 0,
+  rank: null,
+  badges_count: 0,
+  saved_gems_count: 0,
+};
+
+function getLevel(completed: number): string {
+  if (completed === 0) return "Principiante";
+  if (completed <= 2) return "Explorador";
+  if (completed <= 5) return "Aprendiz";
+  if (completed <= 10) return "Avanzado";
+  return "Experto";
+}
 
 export function Profile() {
   const { user, updateProfile } = useAuth();
@@ -14,11 +40,21 @@ export function Profile() {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "history">("overview");
   const [formData, setFormData] = useState({ first_name: "", last_name: "" });
+  const [stats, setStats] = useState<ProfileStats>(EMPTY_STATS);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      setFormData({ first_name: user.first_name, last_name: user.last_name });
-    }
+    if (user) setFormData({ first_name: user.first_name, last_name: user.last_name });
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    setStatsLoading(true);
+    fetch("/api/v1/auth/me/stats")
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((data: ProfileStats) => setStats(data))
+      .catch(() => setStats(EMPTY_STATS))
+      .finally(() => setStatsLoading(false));
   }, [user]);
 
   const handleSave = async () => {
@@ -38,7 +74,7 @@ export function Profile() {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0099DC] mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0099DC] mx-auto mb-4" />
           <p className="text-gray-600">Cargando perfil...</p>
         </div>
       </div>
@@ -46,377 +82,426 @@ export function Profile() {
   }
 
   const userName = `${user.first_name} ${user.last_name}`.trim() || "Usuario";
-  const userAvatar = user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0099DC&color=fff&size=128`;
+  const userAvatar =
+    user.avatar ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=1C3A5C&color=fff&size=128`;
+
+  const level = getLevel(stats.completed_courses);
+  const levelProgress = Math.min(stats.completed_courses * 20, 100);
 
   return (
-    <div className="max-w-[1440px] mx-auto px-6 lg:px-10 py-10">
-      {/* Profile Header Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl overflow-hidden mb-6"
-        style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}
-      >
-        {/* Cover */}
-        <div
-          className="relative h-36 lg:h-48 overflow-hidden"
-        >
-          <img
-            src={coverImage}
-            alt="Profile cover"
-            className="w-full h-full object-cover"
-          />
-          <div
-            className="absolute inset-0"
-            style={{ background: "linear-gradient(to bottom, rgba(13,35,64,0.18) 10%, rgba(13,35,64,0.35) 50%, rgba(255,255,255,1) 100%)" }}
-          />
-          {/* Edit button */}
-          {editing ? (
-            <div className="absolute top-4 right-4 flex items-center gap-2">
-              <button
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200"
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.15)",
-                  color: "#FFFFFF",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                }}
-                onClick={() => {
-                  setFormData({ first_name: user.first_name, last_name: user.last_name });
-                  setEditing(false);
-                }}
-                disabled={saving}
-              >
-                Cancelar
-              </button>
-              <button
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 disabled:opacity-60"
-                style={{
-                  backgroundColor: "#E5A800",
-                  color: "#FFFFFF",
-                  border: "1px solid transparent",
-                }}
-                onClick={handleSave}
-                disabled={saving}
-              >
-                {saving ? "Guardando…" : "Guardar"}
-              </button>
-            </div>
-          ) : (
-            <button
-              className="absolute top-4 right-4 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-white/20"
-              style={{
-                backgroundColor: "rgba(255,255,255,0.12)",
-                color: "#FFFFFF",
-                border: "1px solid rgba(255,255,255,0.2)",
-              }}
-              onClick={() => setEditing(true)}
-            >
-              <Edit2 size={13} /> Edit Profile
-            </button>
-          )}
-        </div>
+    <div className="max-w-[1440px] mx-auto px-6 lg:px-10 py-8">
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
 
-        {/* Profile Info */}
-        <div className="relative z-10 bg-white px-6 lg:px-10 pb-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-14 mb-4">
-            {/* Avatar */}
-            <div className="relative">
-              <img
-                src={userAvatar}
-                alt={userName}
-                className="w-24 h-24 lg:w-28 lg:h-28 rounded-2xl object-cover"
-                style={{
-                  border: "4px solid #FFFFFF",
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-                }}
+        {/* ── LEFT SIDEBAR ── */}
+        <motion.div
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.35 }}
+          className="lg:w-72 xl:w-80 shrink-0 flex flex-col gap-4"
+        >
+          {/* Avatar card */}
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{ backgroundColor: "#FFFFFF", boxShadow: "0 2px 20px rgba(0,0,0,0.08)" }}
+          >
+            <div className="relative h-24 overflow-hidden">
+              <img src={coverImage} alt="" className="w-full h-full object-cover" />
+              <div
+                className="absolute inset-0"
+                style={{ background: "linear-gradient(to bottom, rgba(28,58,92,0.35), rgba(28,58,92,0.7))" }}
               />
-              {editing && (
-                <button
-                  className="absolute bottom-1 right-1 w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: "#0099DC", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
+            </div>
+
+            <div className="flex flex-col items-center px-6 pb-6 -mt-10">
+              <div className="relative mb-3">
+                <img
+                  src={userAvatar}
+                  alt={userName}
+                  className="w-20 h-20 rounded-full object-cover"
+                  style={{ border: "3px solid #FFFFFF", boxShadow: "0 4px 16px rgba(0,0,0,0.18)" }}
+                />
+                {editing && (
+                  <button
+                    className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: "#E5A800", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
+                  >
+                    <Camera size={12} color="white" />
+                  </button>
+                )}
+                <span
+                  className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white"
+                  style={{ backgroundColor: "#22C55E" }}
+                />
+              </div>
+
+              {editing ? (
+                <div className="w-full space-y-2 mb-3">
+                  <input
+                    value={formData.first_name}
+                    onChange={(e) => setFormData((p) => ({ ...p, first_name: e.target.value }))}
+                    placeholder="Nombre"
+                    className="w-full text-center text-sm px-3 py-2 rounded-xl outline-none"
+                    style={{ border: "1.5px solid #0099DC", color: "#1A2332", fontFamily: "'Nunito', sans-serif", fontWeight: 700 }}
+                  />
+                  <input
+                    value={formData.last_name}
+                    onChange={(e) => setFormData((p) => ({ ...p, last_name: e.target.value }))}
+                    placeholder="Apellido"
+                    className="w-full text-center text-sm px-3 py-2 rounded-xl outline-none"
+                    style={{ border: "1.5px solid #0099DC", color: "#1A2332", fontFamily: "'Open Sans', sans-serif" }}
+                  />
+                </div>
+              ) : (
+                <h1
+                  className="text-center"
+                  style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: "1.15rem", color: "#1A2332", marginBottom: "0.15rem" }}
                 >
-                  <Camera size={13} color="white" />
+                  {userName}
+                </h1>
+              )}
+
+              <p style={{ color: "#9AA5B4", fontSize: "0.8rem", fontFamily: "'Open Sans', sans-serif" }}>
+                {user.role || "Aprendiz"}
+              </p>
+
+              <div className="flex gap-2 mt-3">
+                <span
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
+                  style={{ backgroundColor: "rgba(0,153,220,0.1)", color: "#0099DC" }}
+                >
+                  <Shield size={10} /> {level}
+                </span>
+                <span
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
+                  style={{ backgroundColor: "rgba(229,168,0,0.1)", color: "#E5A800" }}
+                >
+                  <Trophy size={10} /> {stats.rank ? `#${stats.rank}` : "N/A"}
+                </span>
+              </div>
+
+              {editing ? (
+                <div className="flex gap-2 mt-4 w-full">
+                  <button
+                    onClick={() => { setFormData({ first_name: user.first_name, last_name: user.last_name }); setEditing(false); }}
+                    disabled={saving}
+                    className="flex-1 py-2 rounded-xl text-sm font-medium transition-all"
+                    style={{ border: "1px solid #E8EAED", color: "#6B7A8D", backgroundColor: "#F9FAFB" }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="flex-1 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-60"
+                    style={{ backgroundColor: "#E5A800", color: "#FFFFFF" }}
+                  >
+                    {saving ? "Guardando…" : "Guardar"}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setEditing(true)}
+                  className="mt-4 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all hover:bg-gray-50 active:scale-[0.98]"
+                  style={{ border: "1px solid #E8EAED", color: "#1C3A5C" }}
+                >
+                  <Edit2 size={13} /> Editar Perfil
                 </button>
               )}
             </div>
+          </div>
 
-            <div className="flex-1 sm:pb-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1
-                   style={{
-                     fontFamily: "'Nunito', sans-serif",
-                     fontWeight: 800,
-                     fontSize: "1.6rem",
-                     color: "#1A2332",
-                     lineHeight: 1.2,
-                   }}
-                 >
-                  {userName}
-                </h1>
-                <div
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full"
-                  style={{ backgroundColor: "rgba(0,153,220,0.1)", border: "1px solid rgba(0,153,220,0.2)" }}
-                >
-                  <Shield size={11} color="#0099DC" />
-                  <span style={{ color: "#0099DC", fontSize: "0.75rem", fontWeight: 600 }}>
-                    Nivel {user.status || 'Nuevo'}
+          {/* Info card */}
+          <div
+            className="rounded-2xl p-5"
+            style={{ backgroundColor: "#FFFFFF", boxShadow: "0 2px 16px rgba(0,0,0,0.06)" }}
+          >
+            <h3
+              className="mb-4"
+              style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 700, fontSize: "0.82rem", color: "#1A2332", textTransform: "uppercase", letterSpacing: "0.06em" }}
+            >
+              Información
+            </h3>
+            <div className="space-y-3">
+              {[
+                { icon: Mail, label: user.email },
+                { icon: Building2, label: user.department || "Sin departamento" },
+                { icon: Shield, label: user.role || "Aprendiz" },
+                { icon: Calendar, label: `Miembro desde ${new Date().toLocaleDateString("es-ES", { month: "long", year: "numeric" })}` },
+              ].map(({ icon: Icon, label }) => (
+                <div key={label} className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: "#F4F6F9" }}>
+                    <Icon size={13} color="#6B7A8D" />
+                  </div>
+                  <span className="text-sm leading-snug break-all" style={{ color: "#4A5568", fontFamily: "'Open Sans', sans-serif" }}>
+                    {label}
                   </span>
                 </div>
-                <div
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full"
-                  style={{ backgroundColor: "rgba(229,168,0,0.1)", border: "1px solid rgba(229,168,0,0.2)" }}
-                >
-                  <Trophy size={11} color="#E5A800" />
-                  <span style={{ color: "#E5A800", fontSize: "0.75rem", fontWeight: 600 }}>
-                    Rank #{user.rank || 'N/A'}
-                  </span>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-4 mt-2">
-                <span className="flex items-center gap-1.5" style={{ color: "#6B7A8D", fontSize: "0.85rem", fontFamily: "'Open Sans', sans-serif", fontWeight: 400 }}>
-                  <Building2 size={13} color="#9AA5B4" /> {user.role || 'No especificado'}
-                </span>
-                <span className="flex items-center gap-1.5" style={{ color: "#6B7A8D", fontSize: "0.85rem", fontFamily: "'Open Sans', sans-serif", fontWeight: 400 }}>
-                  <MapPin size={13} color="#9AA5B4" /> {user.department || 'No especificado'}
-                </span>
-                <span className="flex items-center gap-1.5" style={{ color: "#6B7A8D", fontSize: "0.85rem", fontFamily: "'Open Sans', sans-serif", fontWeight: 400 }}>
-                  <Calendar size={13} color="#9AA5B4" /> Miembro desde {new Date().toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}
-                </span>
-              </div>
+              ))}
             </div>
 
-            {/* Quick stats */}
-            <div className="flex gap-4 sm:ml-auto">
-              {[
-                { icon: Zap, value: user.points?.toLocaleString() || '0', label: "Puntos", color: "#E5A800" },
-                { icon: BookOpen, value: user.completedCourses || 0, label: "Completados", color: "#0099DC" },
-                { icon: Clock, value: `${user.totalHours || 0}h`, label: "Aprendido", color: "#4A8A2C" },
-              ].map(({ icon: Icon, value, label, color }) => (
-                <div key={label} className="text-center">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-1"
-                    style={{ backgroundColor: `${color}12` }}
-                  >
-                    <Icon size={16} color={color} />
-                  </div>
-                  <p style={{ fontFamily: "'Barlow', sans-serif", fontWeight: 700, fontSize: "0.95rem", color: "#1A2332" }}>
-                    {value}
-                  </p>
-                  <p style={{ fontSize: "0.7rem", fontFamily: "'Nunito', sans-serif", fontWeight: 300, color: "#9AA5B4" }}>{label}</p>
+            <div className="mt-5 pt-4" style={{ borderTop: "1px solid #F0F1F5" }}>
+              <p className="mb-3" style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 700, fontSize: "0.78rem", color: "#1A2332", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Información confirmada
+              </p>
+              {["Correo electrónico", "Identidad"].map((item) => (
+                <div key={item} className="flex items-center gap-2 mb-2">
+                  <Check size={13} color="#22C55E" strokeWidth={2.5} />
+                  <span style={{ fontSize: "0.82rem", color: "#4A5568", fontFamily: "'Open Sans', sans-serif" }}>{item}</span>
                 </div>
               ))}
             </div>
           </div>
+        </motion.div>
 
-          {/* Tabs */}
-          <div className="flex gap-1 mt-2 border-b" style={{ borderColor: "#F0F1F5" }}>
+        {/* ── RIGHT MAIN AREA ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.08 }}
+          className="flex-1 min-w-0"
+        >
+          {/* Tab switcher */}
+          <div
+            className="inline-flex gap-1 p-1 rounded-xl mb-6"
+            style={{ backgroundColor: "#FFFFFF", boxShadow: "0 2px 8px rgba(0,0,0,0.07)" }}
+          >
             {(["overview", "history"] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className="px-5 py-3 text-sm font-medium capitalize transition-all duration-200 relative"
-                style={{ color: activeTab === tab ? "#0099DC" : "#9AA5B4" }}
+                className="px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+                style={{
+                  color: activeTab === tab ? "#FFFFFF" : "#9AA5B4",
+                  backgroundColor: activeTab === tab ? "#1C3A5C" : "transparent",
+                  fontFamily: "'Open Sans', sans-serif",
+                  fontWeight: 600,
+                }}
               >
                 {tab === "history" ? "Historial de Cursos" : "Vista General"}
-                {activeTab === tab && (
-                  <motion.div
-                    layoutId="tabIndicator"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
-                    style={{ backgroundColor: "#0099DC" }}
-                  />
-                )}
               </button>
             ))}
           </div>
-        </div>
-      </motion.div>
 
-      {/* Tab Content */}
-      {activeTab === "overview" && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-6"
-        >
-          {/* Edit Profile Form */}
-          <div
-            className="rounded-2xl p-6"
-            style={{ backgroundColor: "#FFFFFF", border: "1px solid #E8EAED", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}
-          >
-            <h2
-               className="mb-5"
-               style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 600, fontSize: "1rem", color: "#1A2332" }}
-             >
-               Información Personal
-             </h2>
-            <div className="space-y-4">
-              {/* Nombre */}
-              <div>
-                <label style={{ fontSize: "0.75rem", fontFamily: "'Open Sans', sans-serif", fontWeight: 600, color: "#9AA5B4", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Nombre
-                </label>
-                <div
-                  className="flex items-center gap-2 mt-1 px-3 py-2.5 rounded-xl"
-                  style={{ backgroundColor: editing ? "#FFFFFF" : "#F9FAFB", border: `1.5px solid ${editing ? "#0099DC" : "#E8EAED"}` }}
-                >
-                  {editing ? (
-                    <input
-                      value={formData.first_name}
-                      onChange={(e) => setFormData((p) => ({ ...p, first_name: e.target.value }))}
-                      className="flex-1 bg-transparent outline-none text-sm"
-                      style={{ color: "#1A2332", fontFamily: "'Open Sans', sans-serif" }}
-                    />
-                  ) : (
-                    <span style={{ fontSize: "0.9rem", color: "#1A2332" }}>{user.first_name}</span>
-                  )}
+          <AnimatePresence mode="wait">
+            {/* ── VISTA GENERAL ── */}
+            {activeTab === "overview" && (
+              <motion.div
+                key="overview"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col gap-5"
+              >
+                {/* Stat cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { icon: BookOpen, value: stats.completed_courses, label: "Cursos Completados", color: "#0099DC", bg: "rgba(0,153,220,0.08)" },
+                    { icon: Clock, value: `${stats.total_hours}h`, label: "Horas Aprendidas", color: "#4A8A2C", bg: "rgba(74,138,44,0.08)" },
+                    { icon: Award, value: stats.badges_count, label: "Insignias", color: "#E5A800", bg: "rgba(229,168,0,0.08)" },
+                    { icon: Trophy, value: stats.rank ? `#${stats.rank}` : "N/A", label: "Ranking Global", color: "#1C3A5C", bg: "rgba(28,58,92,0.08)" },
+                  ].map(({ icon: Icon, value, label, color, bg }, i) => (
+                    <motion.div
+                      key={label}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.06 }}
+                      className="rounded-2xl p-5"
+                      style={{ backgroundColor: "#FFFFFF", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
+                    >
+                      {statsLoading ? (
+                        <>
+                          <div className="w-10 h-10 rounded-xl mb-3 animate-pulse" style={{ backgroundColor: "#F0F1F5" }} />
+                          <div className="h-7 w-16 rounded-lg mb-2 animate-pulse" style={{ backgroundColor: "#F0F1F5" }} />
+                          <div className="h-3 w-24 rounded animate-pulse" style={{ backgroundColor: "#F0F1F5" }} />
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: bg }}>
+                            <Icon size={18} color={color} />
+                          </div>
+                          <p style={{ fontFamily: "'Barlow', sans-serif", fontWeight: 800, fontSize: "1.55rem", color: "#1A2332", lineHeight: 1 }}>
+                            {value}
+                          </p>
+                          <p style={{ fontSize: "0.76rem", color: "#9AA5B4", marginTop: "0.3rem", fontFamily: "'Open Sans', sans-serif" }}>
+                            {label}
+                          </p>
+                        </>
+                      )}
+                    </motion.div>
+                  ))}
                 </div>
-              </div>
-              {/* Apellido */}
-              <div>
-                <label style={{ fontSize: "0.75rem", fontFamily: "'Open Sans', sans-serif", fontWeight: 600, color: "#9AA5B4", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Apellido
-                </label>
-                <div
-                  className="flex items-center gap-2 mt-1 px-3 py-2.5 rounded-xl"
-                  style={{ backgroundColor: editing ? "#FFFFFF" : "#F9FAFB", border: `1.5px solid ${editing ? "#0099DC" : "#E8EAED"}` }}
-                >
-                  {editing ? (
-                    <input
-                      value={formData.last_name}
-                      onChange={(e) => setFormData((p) => ({ ...p, last_name: e.target.value }))}
-                      className="flex-1 bg-transparent outline-none text-sm"
-                      style={{ color: "#1A2332", fontFamily: "'Open Sans', sans-serif" }}
-                    />
-                  ) : (
-                    <span style={{ fontSize: "0.9rem", color: "#1A2332" }}>{user.last_name}</span>
-                  )}
-                </div>
-              </div>
-              {/* Correo (solo lectura) */}
-              <div>
-                <label style={{ fontSize: "0.75rem", fontFamily: "'Open Sans', sans-serif", fontWeight: 600, color: "#9AA5B4", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Correo Electrónico
-                </label>
-                <div
-                  className="flex items-center gap-2 mt-1 px-3 py-2.5 rounded-xl"
-                  style={{ backgroundColor: "#F9FAFB", border: "1.5px solid #E8EAED" }}
-                >
-                  <Mail size={14} color="#9AA5B4" />
-                  <span style={{ fontSize: "0.9rem", color: "#1A2332" }}>{user.email}</span>
-                </div>
-              </div>
-              {/* Departamento (solo lectura) */}
-              <div>
-                <label style={{ fontSize: "0.75rem", fontFamily: "'Open Sans', sans-serif", fontWeight: 600, color: "#9AA5B4", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Departamento
-                </label>
-                <div
-                  className="flex items-center gap-2 mt-1 px-3 py-2.5 rounded-xl"
-                  style={{ backgroundColor: "#F9FAFB", border: "1.5px solid #E8EAED" }}
-                >
-                  <Building2 size={14} color="#9AA5B4" />
-                  <span style={{ fontSize: "0.9rem", color: "#1A2332" }}>{user.department || 'No especificado'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {/* Learning Stats */}
-          <div
-            className="rounded-2xl p-6 lg:col-span-2"
-            style={{ backgroundColor: "#FFFFFF", border: "1px solid #E8EAED", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}
-          >
-            <h2
-               className="mb-5"
-               style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 600, fontSize: "1rem", color: "#1A2332" }}
-             >
-               Estadísticas de Aprendizaje
-             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {[
-                { label: "Cursos Completados", value: user.completedCourses || 0, icon: BookOpen, color: "#0099DC" },
-                { label: "Horas Aprendidas", value: `${user.totalHours || 0}h`, icon: Clock, color: "#4A8A2C" },
-                { label: "Puntos Totales", value: user.points?.toLocaleString() || '0', icon: Zap, color: "#E5A800" },
-                { label: "Racha Actual", value: `${user.streak || 0} días`, icon: Flame, color: "#FF6B35" },
-                { label: "Promedio de Puntaje", value: `${user.avgScore || 0}%`, icon: TrendingUp, color: "#7B61FF" },
-                { label: "Ranking", value: `#${user.rank || 'N/A'}`, icon: Trophy, color: "#E5A800" },
-              ].map(({ label, value, icon: Icon, color }) => (
+                {/* Progress + secondary stats */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Level progress */}
+                  <div className="md:col-span-2 rounded-2xl p-5" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <p style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 700, fontSize: "0.9rem", color: "#1A2332" }}>
+                          Progreso de Nivel
+                        </p>
+                        <p style={{ fontSize: "0.76rem", color: "#9AA5B4", marginTop: "0.2rem" }}>
+                          {level} → {getLevel(stats.completed_courses + 1) !== level ? getLevel(stats.completed_courses + 1) : "Nivel Máximo"}
+                        </p>
+                      </div>
+                      {statsLoading ? (
+                        <div className="h-8 w-14 rounded-lg animate-pulse" style={{ backgroundColor: "#F0F1F5" }} />
+                      ) : (
+                        <span style={{ fontFamily: "'Barlow', sans-serif", fontWeight: 800, fontSize: "1.5rem", color: "#0099DC", lineHeight: 1 }}>
+                          {levelProgress}%
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative w-full rounded-full overflow-hidden" style={{ height: 10, backgroundColor: "#F0F1F5" }}>
+                      <motion.div
+                        className="h-full rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: statsLoading ? "0%" : `${levelProgress}%` }}
+                        transition={{ duration: 1.1, ease: "easeOut", delay: 0.3 }}
+                        style={{ background: "linear-gradient(to right, #0099DC, #1C3A5C)" }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-3">
+                      {[0, 25, 50, 75, 100].map((m) => (
+                        <div key={m} className="flex flex-col items-center gap-1">
+                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: levelProgress >= m ? "#0099DC" : "#E0E4EA" }} />
+                          <span style={{ fontSize: "0.62rem", color: "#9AA5B4" }}>{m}%</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p style={{ color: "#B0B9C6", fontSize: "0.73rem", marginTop: "0.75rem", fontFamily: "'Open Sans', sans-serif" }}>
+                      Cada 5 cursos completados avanzas al siguiente nivel
+                    </p>
+                  </div>
+
+                  {/* En progreso + Gemas */}
+                  <div className="flex flex-col gap-4">
+                    <div
+                      className="flex-1 rounded-2xl p-5"
+                      style={{ background: "linear-gradient(135deg, #0099DC 0%, #1C3A5C 100%)", boxShadow: "0 4px 16px rgba(0,153,220,0.22)" }}
+                    >
+                      <TrendingUp size={20} color="rgba(255,255,255,0.8)" className="mb-2" />
+                      {statsLoading ? (
+                        <div className="h-8 w-10 rounded-lg animate-pulse" style={{ backgroundColor: "rgba(255,255,255,0.2)" }} />
+                      ) : (
+                        <p style={{ fontFamily: "'Barlow', sans-serif", fontWeight: 800, fontSize: "1.75rem", color: "#FFFFFF", lineHeight: 1 }}>
+                          {stats.enrolled_courses}
+                        </p>
+                      )}
+                      <p style={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.75)", marginTop: "0.2rem" }}>
+                        cursos en progreso
+                      </p>
+                    </div>
+                    <div
+                      className="flex-1 rounded-2xl p-5"
+                      style={{ background: "linear-gradient(135deg, #7B61FF 0%, #A08BFF 100%)", boxShadow: "0 4px 16px rgba(123,97,255,0.22)" }}
+                    >
+                      <Gem size={20} color="rgba(255,255,255,0.8)" className="mb-2" />
+                      {statsLoading ? (
+                        <div className="h-8 w-10 rounded-lg animate-pulse" style={{ backgroundColor: "rgba(255,255,255,0.2)" }} />
+                      ) : (
+                        <p style={{ fontFamily: "'Barlow', sans-serif", fontWeight: 800, fontSize: "1.75rem", color: "#FFFFFF", lineHeight: 1 }}>
+                          {stats.saved_gems_count}
+                        </p>
+                      )}
+                      <p style={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.75)", marginTop: "0.2rem" }}>
+                        gemas guardadas
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Achievements */}
+                <div className="rounded-2xl p-5" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <p style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 700, fontSize: "0.9rem", color: "#1A2332" }}>
+                      Logros e Insignias
+                    </p>
+                    {!statsLoading && stats.badges_count > 0 && (
+                      <span
+                        className="px-2.5 py-1 rounded-full text-xs font-semibold"
+                        style={{ backgroundColor: "rgba(229,168,0,0.1)", color: "#E5A800" }}
+                      >
+                        {stats.badges_count} obtenidas
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    className="flex flex-col items-center py-8 rounded-xl"
+                    style={{ backgroundColor: "#F9FAFB", border: "1px dashed #E8EAED" }}
+                  >
+                    <Star size={30} color="#D1D9E6" className="mb-2" />
+                    <p style={{ fontSize: "0.85rem", color: "#9AA5B4", fontFamily: "'Open Sans', sans-serif" }}>
+                      {statsLoading ? "Cargando insignias..." : "Completa cursos para ganar insignias"}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── HISTORIAL DE CURSOS ── */}
+            {activeTab === "history" && (
+              <motion.div
+                key="history"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col gap-4"
+              >
+                {/* Summary banner */}
                 <div
-                  key={label}
-                  className="p-4 rounded-xl"
-                  style={{ backgroundColor: `${color}08`, border: `1px solid ${color}20` }}
+                  className="rounded-2xl p-6"
+                  style={{ background: "linear-gradient(135deg, #1C3A5C 0%, #0099DC 100%)", boxShadow: "0 4px 24px rgba(28,58,92,0.22)" }}
                 >
-                  <Icon size={20} color={color} className="mb-2" />
-                  <p style={{ fontFamily: "'Barlow', sans-serif", fontWeight: 700, fontSize: "1.25rem", color: "#1A2332", marginBottom: "0.25rem" }}>
-                    {value}
+                  <p className="mb-4" style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: "1rem", color: "rgba(255,255,255,0.7)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                    Resumen de Aprendizaje
                   </p>
-                  <p style={{ fontSize: "0.75rem", fontFamily: "'Nunito', sans-serif", fontWeight: 400, color: "#6B7A8D" }}>
-                    {label}
+                  <div className="flex flex-wrap gap-8">
+                    {[
+                      { icon: BookOpen, value: statsLoading ? "—" : String(stats.completed_courses), label: "Completados" },
+                      { icon: Clock, value: statsLoading ? "—" : `${stats.total_hours}h`, label: "Horas totales" },
+                      { icon: Award, value: statsLoading ? "—" : String(stats.badges_count), label: "Insignias" },
+                      { icon: Trophy, value: statsLoading ? "—" : (stats.rank ? `#${stats.rank}` : "N/A"), label: "Ranking" },
+                    ].map(({ icon: Icon, value, label }) => (
+                      <div key={label} className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: "rgba(255,255,255,0.15)" }}>
+                          <Icon size={17} color="white" />
+                        </div>
+                        <div>
+                          <p style={{ fontFamily: "'Barlow', sans-serif", fontWeight: 800, fontSize: "1.25rem", color: "#FFFFFF", lineHeight: 1 }}>
+                            {value}
+                          </p>
+                          <p style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.65)", marginTop: "0.15rem" }}>{label}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Empty state */}
+                <div
+                  className="rounded-2xl p-8 flex flex-col items-center justify-center"
+                  style={{ backgroundColor: "#FFFFFF", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", minHeight: 260 }}
+                >
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ backgroundColor: "rgba(0,153,220,0.08)" }}>
+                    <BookOpen size={28} color="#0099DC" />
+                  </div>
+                  <p style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 700, fontSize: "1rem", color: "#1A2332", marginBottom: "0.4rem" }}>
+                    Tu historial de cursos aparecerá aquí
+                  </p>
+                  <p style={{ color: "#9AA5B4", fontSize: "0.84rem", fontFamily: "'Open Sans', sans-serif", maxWidth: "360px", textAlign: "center" }}>
+                    Completa cursos para ver tu progreso histórico y todos los logros alcanzados
                   </p>
                 </div>
-              ))}
-            </div>
-
-            {/* Level Progress */}
-            <div
-              className="p-4 rounded-xl mt-6"
-              style={{
-                background: "linear-gradient(135deg, rgba(0,153,220,0.05), rgba(28,58,92,0.05))",
-                border: "1px solid rgba(0,153,220,0.2)",
-              }}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Trophy size={16} color="#0099DC" />
-                  <span style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 600, fontSize: "0.85rem", color: "#1A2332" }}>
-                    Progreso de Nivel: {user.status || 'Nivel 1'}
-                  </span>
-                </div>
-                <span style={{ color: "#0099DC", fontWeight: 700, fontSize: "0.85rem" }}>
-                  {Math.min(((user.completedCourses || 0) * 20), 100)}%
-                </span>
-              </div>
-              <div className="w-full rounded-full overflow-hidden" style={{ height: 8, backgroundColor: "rgba(0,0,0,0.07)" }}>
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${Math.min(((user.completedCourses || 0) * 20), 100)}%`,
-                    background: "linear-gradient(to right, #0099DC, #1C3A5C)",
-                  }}
-                />
-              </div>
-              <p style={{ color: "#9AA5B4", fontSize: "0.75rem", marginTop: "0.5rem" }}>
-                Completa más cursos para alcanzar el siguiente nivel
-              </p>
-            </div>
-          </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
-      )}
 
-      {activeTab === "history" && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl p-6"
-          style={{ backgroundColor: "#FFFFFF", border: "1px solid #E8EAED", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}
-        >
-          <h2
-             className="mb-5"
-             style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 600, fontSize: "1rem", color: "#1A2332" }}
-           >
-             Historial de Cursos
-           </h2>
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <BookOpen size={48} color="#9AA5B4" className="mb-4" />
-            <p style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 600, fontSize: "1rem", color: "#1A2332", marginBottom: "0.5rem" }}>
-              Tu historial de cursos aparecerá aquí
-            </p>
-            <p style={{ color: "#9AA5B4", fontSize: "0.875rem", fontFamily: "'Nunito', sans-serif", fontWeight: 300, maxWidth: "400px" }}>
-              Completa tus cursos para ver tu progreso histórico y logros alcanzados
-            </p>
-          </div>
-        </motion.div>
-      )}
+      </div>
     </div>
   );
 }
