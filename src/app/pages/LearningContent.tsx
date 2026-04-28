@@ -15,10 +15,8 @@ import {
   Star,
   Users,
   X,
-  Award,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { CertificationCatalog } from "../types/certification";
 
 interface CourseArea {
   id: string;
@@ -47,7 +45,6 @@ interface CourseCatalogItem {
   total_completed: number;
   is_enrolled: boolean;
   enrollment: CourseEnrollment | null;
-  has_certification?: boolean;
 }
 
 const durationOptions = ["Cualquiera", "Menos de 4h", "4h - 8h", "8h+"];
@@ -161,11 +158,6 @@ function CatalogCourseCard({
               En progreso
             </span>
           )}
-          {course.has_certification && (
-            <span className="rounded-full px-2 py-1 text-[0.66rem] font-semibold text-white flex items-center gap-1" style={{ backgroundColor: "#E5A800" }}>
-              <Award size={10} /> Certificación
-            </span>
-          )}
         </div>
 
         <div className="absolute bottom-3 left-3">
@@ -255,7 +247,6 @@ export function LearningContent() {
   const [loadingCourseDetail, setLoadingCourseDetail] = useState(false);
   const [loadingCourseDetailError, setLoadingCourseDetailError] = useState(false);
   const [enrollingCourseId, setEnrollingCourseId] = useState<string | null>(null);
-  const [certCatalog, setCertCatalog] = useState<CertificationCatalog[]>([]);
 
   const courseDetailCacheRef = useRef<Map<string, CourseCatalogItem>>(new Map());
 
@@ -369,11 +360,6 @@ export function LearningContent() {
 
   useEffect(() => {
     fetchCourses();
-    // Fetch certifications catalog
-    fetch("/api/v1/certifications/catalog", { credentials: "include" })
-      .then((res) => res.ok ? res.json() : [])
-      .then((data) => setCertCatalog(Array.isArray(data) ? data : []))
-      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -682,90 +668,6 @@ export function LearningContent() {
             ))}
           </div>
         )}
-        {/* Certifications Section */}
-        {certCatalog.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mt-10"
-          >
-            <div className="flex items-center gap-2 mb-5">
-              <Award size={20} color="#E5A800" />
-              <h2 style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: "1.4rem", color: "#1A2332" }}>
-                Certificaciones Disponibles
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {certCatalog.map((c) => {
-                const statusMap: Record<string, { label: string; color: string; bg: string }> = {
-                  requested: { label: "Solicitada", color: "#0099DC", bg: "rgba(0,153,220,0.1)" },
-                  approved: { label: "Aprobada", color: "#E5A800", bg: "rgba(229,168,0,0.1)" },
-                  issued: { label: "Emitida", color: "#4A8A2C", bg: "rgba(74,138,44,0.1)" },
-                  rejected: { label: "Rechazada", color: "#DC2626", bg: "rgba(220,38,38,0.1)" },
-                };
-                const s = c.user_certification_status ? statusMap[c.user_certification_status] : null;
-                return (
-                  <motion.div
-                    key={c.id}
-                    whileHover={{ y: -4 }}
-                    className="rounded-2xl overflow-hidden cursor-pointer"
-                    style={{ boxShadow: "0 2px 16px rgba(0,0,0,0.08)", border: "1px solid rgba(0,0,0,0.05)" }}
-                    onClick={() => navigate(`/courses/${c.course_id}`)}
-                  >
-                    {/* Cover */}
-                    <div className="relative h-32 overflow-hidden">
-                      <img
-                        src={c.course_cover_url || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=60"}
-                        alt={c.course_title}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-                      <div className="absolute top-2 left-2 flex gap-2">
-                        <span className="rounded-full px-2.5 py-1 text-[0.65rem] font-bold text-white flex items-center gap-1" style={{ backgroundColor: "#E5A800" }}>
-                          <Award size={10} /> Certificación
-                        </span>
-                        {c.is_free_for_user && (
-                          <span className="rounded-full px-2.5 py-1 text-[0.65rem] font-bold text-white" style={{ backgroundColor: "#4A8A2C" }}>
-                            Gratis para ti
-                          </span>
-                        )}
-                      </div>
-                      <div className="absolute bottom-2 left-2 right-2">
-                        <p className="text-white text-sm font-bold truncate">{c.title}</p>
-                      </div>
-                    </div>
-                    {/* Body */}
-                    <div className="bg-white p-4">
-                      <p className="text-xs mb-2" style={{ color: "#6B7A8D" }}>
-                        Curso: <strong style={{ color: "#1A2332" }}>{c.course_title}</strong>
-                        {c.course_area && <> · {c.course_area}</>}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold" style={{ color: c.is_free_for_user ? "#4A8A2C" : "#E5A800" }}>
-                          {c.is_free_for_user ? "Gratis" : c.cost ? `$${c.cost} USD` : "Gratis"}
-                        </span>
-                        {s ? (
-                          <span className="text-[0.7rem] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: s.bg, color: s.color }}>
-                            {s.label}
-                          </span>
-                        ) : c.course_completed ? (
-                          <span className="text-[0.7rem] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(74,138,44,0.1)", color: "#4A8A2C" }}>
-                            Disponible
-                          </span>
-                        ) : (
-                          <span className="text-[0.7rem] px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(0,0,0,0.05)", color: "#9AA5B4" }}>
-                            Completa el curso
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
       </div>
 
       {selectedCourseId && (
@@ -868,14 +770,6 @@ export function LearningContent() {
                                 : "Inscrito"
                               : "Disponible"}
                           </span>
-                          {selectedCourseDetail.has_certification && (
-                            <span
-                              className="rounded-full px-3 py-1 text-xs font-semibold text-white flex items-center gap-1"
-                              style={{ backgroundColor: "rgba(229,168,0,0.92)" }}
-                            >
-                              <Award size={11} /> Certificación
-                            </span>
-                          )}
                         </div>
                       </div>
 

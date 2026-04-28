@@ -4,9 +4,7 @@ import { AdminLayout } from './components/AdminLayout';
 import { SuperAdminLayout } from './components/SuperAdminLayout';
 import { Home } from './pages/Home';
 import { LearningContent } from './pages/LearningContent';
-import { MyProgress } from './pages/MyProgress';
 import { Profile } from './pages/Profile';
-import { Search } from './pages/Search';
 import { LoginPage } from './pages/LoginPage';
 import { CourseView } from './pages/CourseView';
 import { Forum } from './pages/Forum';
@@ -42,9 +40,7 @@ export const router = createBrowserRouter([
           { path: 'forum/:postId', Component: ForumPostDetail },
           { path: 'gems', Component: GemBank },
           { path: 'gems/:gemId', Component: GemDetail },
-          { path: 'progress', Component: MyProgress },
           { path: 'profile', Component: Profile },
-          { path: 'search', Component: Search },
         ],
       },
       {
