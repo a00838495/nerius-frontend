@@ -8,10 +8,7 @@ import {
 import {
   Home,
   BookOpen,
-  TrendingUp,
   User,
-  Search,
-  Bell,
   ChevronDown,
   Menu,
   X,
@@ -23,6 +20,7 @@ import { useAuth } from "../hooks/useAuth";
 import whirlpoolLogo from "../../assets/c1344ad5145e3dcee746b700b0a6ef41f0a04829.png";
 import { Button } from "./ui/button";
 import { Toaster } from "./ui/sonner";
+import { ChatBot } from "./ChatBot";
 import { PanelSwitcher } from "./PanelSwitcher";
 
 const navItems = [
@@ -30,13 +28,13 @@ const navItems = [
   { path: "/learning", label: "Aprendizaje", icon: BookOpen },
   { path: "/forum", label: "Foro", icon: MessageSquare },
   { path: "/gems", label: "Gemas", icon: Sparkles },
-  { path: "/progress", label: "Mi Progreso", icon: TrendingUp },
   { path: "/profile", label: "Perfil", icon: User },
 ];
 
 export function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
@@ -48,10 +46,12 @@ export function Layout() {
       window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  if (!user) return null;
+  useEffect(() => {
+    setAvatarError(false);
+  }, [user?.avatar]);
 
-  const userName = `${user.first_name} ${user.last_name}`.trim();
-  const generatedAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0099DC&color=fff&size=64`;
+  if (!user) return null;
+  const showAvatarImage = Boolean(user.avatar?.trim()) && !avatarError;
 
   return (
     <div
@@ -133,12 +133,26 @@ export function Layout() {
                 onClick={() => navigate("/profile")}
                 title="Go to Profile"
               >
-                <img
-                  src={generatedAvatar}
-                  alt={user.first_name}
-                  className="w-7 h-7 rounded-full object-cover transition-transform duration-200 group-hover/avatar:scale-110"
-                  style={{ border: "2px solid #E5A800" }}
-                />
+                {showAvatarImage ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.first_name}
+                    onError={() => setAvatarError(true)}
+                    className="w-7 h-7 rounded-full object-cover transition-transform duration-200 group-hover/avatar:scale-110"
+                    style={{ border: "2px solid #E5A800" }}
+                  />
+                ) : (
+                  <span
+                    className="w-7 h-7 rounded-full flex items-center justify-center transition-transform duration-200 group-hover/avatar:scale-110"
+                    style={{
+                      border: "2px solid #E5A800",
+                      backgroundColor: "#F4F6F9",
+                      color: "#1C3A5C",
+                    }}
+                  >
+                    <User size={14} />
+                  </span>
+                )}
                 <span
                   className="hidden lg:block text-sm transition-colors duration-200 group-hover/avatar:text-[#E5A800]"
                   style={{ color: "#1A2332", fontWeight: 500 }}
@@ -147,7 +161,7 @@ export function Layout() {
                 </span>
                 <ChevronDown size={12} color="#89B8D4" />
               </button>
-              
+
                {/* Panel Switcher (only visible for admins/superadmins) */}
                <div className="hidden md:flex">
                  <PanelSwitcher />
@@ -155,8 +169,8 @@ export function Layout() {
 
                {/* Desktop Logout - Simplified for now */}
                <Button
-                variant="ghost"
-                size="icon"
+                variant="ghost" 
+                size="icon" 
                 onClick={() => logout()}
                 title="Logout"
                 className="hidden md:flex"
@@ -235,6 +249,9 @@ export function Layout() {
       
       {/* Toast Notifications */}
       <Toaster />
+
+      {/* AI Chat Assistant */}
+      <ChatBot />
     </div>
   );
 }

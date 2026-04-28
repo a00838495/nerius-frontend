@@ -1,0 +1,8 @@
+/* =============================================================
+   ANIMATIONS INDEX
+   Punto de entrada para todos los archivos de animacion.
+   Importa este archivo desde src/styles/index.css
+   ============================================================= */
+
+@import './gems.css';
+@import './ui.css';

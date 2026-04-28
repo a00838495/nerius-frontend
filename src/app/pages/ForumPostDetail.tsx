@@ -453,7 +453,7 @@ export function ForumPostDetail() {
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#0099DC] focus:ring-2 focus:ring-[#0099DC]/20 transition-all resize-none"
             style={{ fontFamily: "'Open Sans', sans-serif" }}
           />
-
+          
           <div className="flex items-center justify-between mt-3">
             <span className="text-sm text-gray-500">
               {newComment.length} / 5000 caracteres
