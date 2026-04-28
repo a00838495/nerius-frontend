@@ -532,10 +532,10 @@ export function CourseView() {
               Explorar más cursos
             </button>
             <button
-              onClick={() => navigate("/progress")}
+              onClick={() => navigate("/profile")}
               className="px-6 py-3 bg-white text-[#0099DC] border-2 border-[#0099DC] rounded-lg hover:bg-blue-50 transition-colors font-medium"
             >
-              Ver mi progreso
+              Ver mi perfil
             </button>
           </motion.div>
         </motion.div>

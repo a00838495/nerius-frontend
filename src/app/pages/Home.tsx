@@ -85,7 +85,6 @@ interface CourseExpandedDetail {
     status: string;
     progress_percent: number;
   } | null;
-  has_certification?: boolean;
 }
 
 interface PendingAssignedCourse {
@@ -1162,7 +1161,7 @@ export function Home() {
                     Recomendados para Ti
                   </h2>
                   <button
-                    onClick={() => navigate("/search")}
+                    onClick={() => navigate("/learning")}
                     className="text-sm font-semibold flex items-center gap-1 hover:gap-2 transition-all"
                     style={{ color: "#0099DC" }}
                   >
@@ -1191,7 +1190,7 @@ export function Home() {
                   <h3 className="text-lg font-semibold text-gray-700 mb-2">Sin recomendaciones aún</h3>
                   <p className="text-sm text-gray-500 mb-4">¡Comienza a explorar cursos para obtener recomendaciones personalizadas!</p>
                   <button
-                    onClick={() => navigate("/search")}
+                    onClick={() => navigate("/learning")}
                     className="px-4 py-2 bg-[#0099DC] text-white rounded-lg hover:opacity-90 transition-all"
                   >
                     Explorar Cursos
@@ -1199,9 +1198,6 @@ export function Home() {
                 </div>
               </section>
             )}
-
-            {/* Gem Recommendations */}
-            <GemRecommendations />
           </div>
 
           {/* Sidebar */}
@@ -1334,6 +1330,9 @@ export function Home() {
                 )}
               </div>
             </motion.section>
+
+            {/* Gem Recommendations */}
+            <GemRecommendations />
           </div>
         </div>
       </div>
@@ -1444,14 +1443,6 @@ export function Home() {
                                   : "Inscrito"
                                 : "Recomendado"}
                             </span>
-                            {expandedCourseDetail.has_certification && (
-                              <span
-                                className="rounded-full px-3 py-1 text-xs font-semibold text-white flex items-center gap-1"
-                                style={{ backgroundColor: "rgba(229,168,0,0.92)" }}
-                              >
-                                <Award size={11} /> Certificación
-                              </span>
-                            )}
                           </div>
                         </div>
 

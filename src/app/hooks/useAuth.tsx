@@ -10,6 +10,9 @@ export interface User {
   role_name: string | null;
   role_names: string[];
   created_at: string | null;
+  avatar?: string;
+  department?: string;
+  role?: string;
 }
 
 interface AuthContextType {
@@ -18,6 +21,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<User | null>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  updateProfile: (data: { first_name?: string; last_name?: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,7 +37,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await response.json();
         const userData: User = {
           ...data,
-          role_names: Array.isArray(data.role_names) ? data.role_names : (data.role_name ? [data.role_name] : []),
+          role_names: Array.isArray(data.role_names)
+            ? data.role_names
+            : (data.role_name ? [data.role_name] : []),
+          avatar: data.avatar ?? "",
+          department: data.area_name ?? "General",
+          role: data.role_name ?? "Learner",
         };
         setUser(userData);
         return userData;
@@ -89,8 +98,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateProfile = async (data: { first_name?: string; last_name?: string }) => {
+    const response = await fetch('/api/v1/auth/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || 'Error al guardar el perfil');
+    }
+    await fetchUser();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, checkAuth }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, checkAuth, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

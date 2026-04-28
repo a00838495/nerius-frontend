@@ -2,17 +2,17 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Mail, Building2, BookOpen, Clock, Trophy,
-  Calendar, Shield, Flame, Award, CheckCircle2, ChevronRight,
-  Sparkles, Bookmark, Loader2, GraduationCap, Gem, FileCheck,
+  Edit2, Camera, Mail, Building2, BookOpen, Clock, Trophy,
+  Calendar, Shield, TrendingUp, Gem, Check, Star, Award,
+  Sparkles, Bookmark, Loader2, CheckCircle2, ChevronRight, FileCheck,
 } from "lucide-react";
-import { toast } from "sonner";
 import { useAuth } from "../hooks/useAuth";
+import { toast } from "sonner";
+import coverImage from "../../assets/7fd3dad4efe18ada7c508db557505a6fb72bb193.png";
 import type { UserGemCollectionEntry } from "../types/gems";
 import type { UserCertification } from "../types/certification";
-import coverImage from "../../assets/7fd3dad4efe18ada7c508db557505a6fb72bb193.png";
 
-interface UserStats {
+interface ProfileStats {
   completed_courses: number;
   enrolled_courses: number;
   total_hours: number;
@@ -21,25 +21,13 @@ interface UserStats {
   saved_gems_count: number;
 }
 
-interface Badge {
-  id: string;
-  name: string;
-  description: string | null;
-  icon_url: string | null;
-  main_color: string;
-  secondary_color: string;
-}
-
-interface UserBadge {
-  id: string;
-  badge: Badge;
-  awarded_at: string;
-}
-
-const ROLE_LABELS: Record<string, string> = {
-  super_admin: "Super Admin",
-  content_admin: "Content Admin",
-  learner: "Aprendiz",
+const EMPTY_STATS: ProfileStats = {
+  completed_courses: 0,
+  enrolled_courses: 0,
+  total_hours: 0,
+  rank: null,
+  badges_count: 0,
+  saved_gems_count: 0,
 };
 
 function getLevel(completed: number): { level: number; label: string; nextAt: number; progressPct: number; color: string } {
@@ -57,12 +45,14 @@ function getLevel(completed: number): { level: number; label: string; nextAt: nu
 }
 
 export function Profile() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const navigate = useNavigate();
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "history" | "gems">("overview");
-  const [stats, setStats] = useState<UserStats | null>(null);
+  const [formData, setFormData] = useState({ first_name: "", last_name: "" });
+  const [stats, setStats] = useState<ProfileStats>(EMPTY_STATS);
   const [statsLoading, setStatsLoading] = useState(true);
-  const [badges, setBadges] = useState<UserBadge[]>([]);
   const [certifications, setCertifications] = useState<UserCertification[]>([]);
   const [completedCourses, setCompletedCourses] = useState<Array<{
     id: string;
@@ -77,31 +67,27 @@ export function Profile() {
   const [gemsLoading, setGemsLoading] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setStatsLoading(true);
-      try {
-        const [statsRes, badgesRes, certsRes] = await Promise.all([
-          fetch("/api/v1/auth/me/stats", { credentials: "include" }),
-          fetch("/api/v1/courses/user/badges", { credentials: "include" }),
-          fetch("/api/v1/certifications/my", { credentials: "include" }),
-        ]);
+    if (user) setFormData({ first_name: user.first_name, last_name: user.last_name });
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    setStatsLoading(true);
+    Promise.all([
+      fetch("/api/v1/auth/me/stats", { credentials: "include" }),
+      fetch("/api/v1/certifications/my", { credentials: "include" }),
+    ])
+      .then(async ([statsRes, certsRes]) => {
         if (statsRes.ok) setStats(await statsRes.json());
-        if (badgesRes.ok) {
-          const data = await badgesRes.json();
-          setBadges(Array.isArray(data) ? data : []);
-        }
+        else setStats(EMPTY_STATS);
         if (certsRes.ok) {
           const data = await certsRes.json();
           setCertifications(Array.isArray(data) ? data : []);
         }
-      } catch {
-        // silent
-      } finally {
-        setStatsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+      })
+      .catch(() => setStats(EMPTY_STATS))
+      .finally(() => setStatsLoading(false));
+  }, [user]);
 
   const fetchGemCollection = useCallback(async () => {
     setGemsLoading(true);
@@ -150,6 +136,19 @@ export function Profile() {
     }
   };
 
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateProfile(formData);
+      setEditing(false);
+      toast.success("Perfil actualizado correctamente");
+    } catch (err: any) {
+      toast.error(err.message || "Error al guardar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (!user) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -162,11 +161,12 @@ export function Profile() {
   }
 
   const userName = `${user.first_name} ${user.last_name}`.trim() || "Usuario";
-  const userAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0099DC&color=fff&size=128`;
-  const roleLabel = user.role_name ? (ROLE_LABELS[user.role_name] || user.role_name) : "Sin rol";
-  const memberSince = user.created_at
-    ? new Date(user.created_at).toLocaleDateString("es-ES", { month: "long", year: "numeric" })
-    : null;
+  const userAvatar =
+    user.avatar ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=1C3A5C&color=fff&size=128`;
+
+  const level = getLevel(stats.completed_courses);
+  const levelProgress = Math.min(stats.completed_courses * 20, 100);
 
   const levelInfo = getLevel(stats?.completed_courses ?? 0);
   const milestones = [0, 25, 50, 75, 100];
