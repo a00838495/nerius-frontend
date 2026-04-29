@@ -9,12 +9,12 @@ import {
   superadminHealthApi, superadminMetricsApi, superadminSessionsApi,
 } from "../lib/superadminApi";
 import type {
-  HealthSummary, ActiveUsersMetric, DatabaseMetrics, SessionStats,
+  HealthSummary, ActiveUsers, DatabaseMetrics, SessionStats,
 } from "../types/superadminPanel";
 
 export function SuperAdminDashboard() {
   const [health, setHealth] = useState<HealthSummary | null>(null);
-  const [activeUsers, setActiveUsers] = useState<ActiveUsersMetric | null>(null);
+  const [activeUsers, setActiveUsers] = useState<ActiveUsers | null>(null);
   const [dbMetrics, setDbMetrics] = useState<DatabaseMetrics | null>(null);
   const [sessionStats, setSessionStats] = useState<SessionStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,7 +23,7 @@ export function SuperAdminDashboard() {
     try {
       const [h, a, d, s] = await Promise.all([
         superadminHealthApi.summary(),
-        superadminMetricsApi.activeUsers(),
+        superadminMetricsApi.activeUsers(24, "hour"),
         superadminMetricsApi.database(),
         superadminSessionsApi.stats(),
       ]);
@@ -52,7 +52,22 @@ export function SuperAdminDashboard() {
     );
   }
 
-  const isHealthy = health?.status === "healthy" || health?.status === "ok";
+  const isHealthy = health?.status === "ok" || health?.status === "healthy";
+
+  // Active users: last bucket = "now", sum of all buckets = period total
+  const buckets = activeUsers?.buckets ?? [];
+  const activeNow = buckets.length > 0 ? buckets[buckets.length - 1]?.unique_users ?? 0 : 0;
+  const activeToday = buckets.reduce((sum, b) => Math.max(sum, b.unique_users), 0);
+
+  // DB metrics: derive totals from tables array
+  const tables = dbMetrics?.tables ?? [];
+  const findTable = (name: string) =>
+    tables.find((t) => t.table_name.toLowerCase() === name.toLowerCase())?.row_count ?? 0;
+
+  const totalUsers = findTable("users");
+  const totalCourses = findTable("courses");
+  const totalEnrollments = findTable("enrollments");
+  const totalSessions = findTable("sessions");
 
   return (
     <div className="max-w-7xl mx-auto px-6 lg:px-10 py-8">
@@ -93,26 +108,43 @@ export function SuperAdminDashboard() {
         </div>
         <div className="text-right hidden md:block">
           <p style={{ fontSize: "0.78rem", opacity: 0.8 }}>UPTIME</p>
-          <p style={{ fontSize: "1.4rem", fontWeight: 800 }}>{formatUptime(health?.system.uptime_seconds ?? 0)}</p>
+          <p style={{ fontSize: "1.4rem", fontWeight: 800 }}>
+            {formatUptime(health?.system?.process?.uptime_seconds ?? 0)}
+          </p>
         </div>
       </motion.div>
 
       {/* Resource gauges */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-        <Gauge label="CPU" value={health?.system?.cpu_percent ?? 0} icon={Cpu} color="#0099DC"
-          subtitle={`${fmt(health?.system?.cpu_percent, 1)}% en uso`} />
-        <Gauge label="Memoria" value={health?.system?.memory_percent ?? 0} icon={MemoryStick} color="#7B61FF"
-          subtitle={`${fmt(health?.system?.memory_used_mb, 0)} / ${fmt(health?.system?.memory_total_mb, 0)} MB`} />
-        <Gauge label="Disco" value={health?.system?.disk_percent ?? 0} icon={HardDrive} color="#E5A800"
-          subtitle={`${fmt(health?.system?.disk_used_gb, 1)} / ${fmt(health?.system?.disk_total_gb, 1)} GB`} />
+        <Gauge
+          label="CPU"
+          value={health?.system?.cpu?.percent ?? 0}
+          icon={Cpu}
+          color="#0099DC"
+          subtitle={`${fmt(health?.system?.cpu?.percent, 1)}% • ${health?.system?.cpu?.count_logical ?? "—"} cores`}
+        />
+        <Gauge
+          label="Memoria"
+          value={health?.system?.memory?.percent ?? 0}
+          icon={MemoryStick}
+          color="#7B61FF"
+          subtitle={`${fmt(health?.system?.memory?.used_mb, 0)} / ${fmt(health?.system?.memory?.total_mb, 0)} MB`}
+        />
+        <Gauge
+          label="Disco"
+          value={health?.system?.disk?.percent ?? 0}
+          icon={HardDrive}
+          color="#E5A800"
+          subtitle={`${fmt(health?.system?.disk?.used_gb, 1)} / ${fmt(health?.system?.disk?.total_gb, 1)} GB`}
+        />
       </div>
 
       {/* Stats counters */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
-        <Stat icon={UsersIcon} label="Activos ahora" value={activeUsers?.active_now ?? 0} color="#4A8A2C" />
-        <Stat icon={Activity} label="Activos hoy" value={activeUsers?.active_today ?? 0} color="#0099DC" />
+        <Stat icon={UsersIcon} label="Activos ahora" value={activeNow} color="#4A8A2C" />
+        <Stat icon={Activity} label="Pico hoy" value={activeToday} color="#0099DC" />
         <Stat icon={KeyRound} label="Sesiones activas" value={sessionStats?.total_active ?? 0} color="#7B61FF" />
-        <Stat icon={AlertTriangle} label="Por expirar" value={sessionStats?.expiring_soon ?? 0} color="#E87830" />
+        <Stat icon={AlertTriangle} label="Sesiones expiradas" value={sessionStats?.total_expired ?? 0} color="#E87830" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -122,12 +154,12 @@ export function SuperAdminDashboard() {
             <Database size={18} style={{ color: "#7B61FF" }} /> Base de datos
           </h3>
           <div className="grid grid-cols-2 gap-3">
-            <DbStat label="Usuarios" value={dbMetrics?.total_users ?? 0} />
-            <DbStat label="Cursos" value={dbMetrics?.total_courses ?? 0} />
-            <DbStat label="Inscripciones" value={dbMetrics?.total_enrollments ?? 0} />
-            <DbStat label="Sesiones (todas)" value={dbMetrics?.total_sessions ?? 0} />
-            <DbStat label="Tamaño BD" value={dbMetrics?.database_size_mb != null ? `${fmt(dbMetrics.database_size_mb, 1)} MB` : "—"} />
-            <DbStat label="Latencia" value={dbMetrics?.latency_ms != null ? `${fmt(dbMetrics.latency_ms, 2)} ms` : "—"} />
+            <DbStat label="Usuarios" value={totalUsers} />
+            <DbStat label="Cursos" value={totalCourses} />
+            <DbStat label="Inscripciones" value={totalEnrollments} />
+            <DbStat label="Sesiones (todas)" value={totalSessions} />
+            <DbStat label="Tamaño BD" value={health?.database?.total_size_mb != null ? `${fmt(health.database.total_size_mb, 1)} MB` : "—"} />
+            <DbStat label="Latencia" value={health?.database?.latency_ms != null ? `${health.database.latency_ms} ms` : "—"} />
           </div>
         </div>
 
@@ -138,11 +170,12 @@ export function SuperAdminDashboard() {
           </h3>
           <div className="space-y-2 text-sm">
             <Row label="Estado" value={health?.system?.status ?? "—"} />
-            <Row label="Python" value={health?.system?.python_version ?? formatPlatform(health?.system?.platform).pythonVersion ?? "—"} />
-            <Row label="Plataforma" value={formatPlatform(health?.system?.platform).label} />
+            <Row label="Python" value={getPlatform(health, "python_version")} />
+            <Row label="Plataforma" value={formatPlatformLabel(health?.system?.platform)} />
             <Row label="DB Dialect" value={health?.database?.dialect ?? "—"} />
-            <Row label="Conexiones activas" value={String(health?.database?.active_connections ?? "—")} />
-            <Row label="Total tablas" value={String(health?.database?.total_tables ?? "—")} />
+            <Row label="DB Conectada" value={health?.database?.connected ? "Sí" : "No"} />
+            <Row label="Total tablas" value={String(health?.database?.table_count ?? "—")} />
+            <Row label="Hilos del proceso" value={String(health?.system?.process?.threads ?? "—")} />
           </div>
         </div>
       </div>
@@ -190,20 +223,23 @@ function fmt(n: number | null | undefined, decimals = 1): string {
   return n.toFixed(decimals);
 }
 
-/** Backend can return platform as a string or as an object. Normalize to text. */
-function formatPlatform(platform: unknown): { label: string; pythonVersion?: string } {
-  if (!platform) return { label: "—" };
-  if (typeof platform === "string") return { label: platform };
-  if (typeof platform === "object") {
-    const p = platform as Record<string, unknown>;
-    const system = typeof p.system === "string" ? p.system : "";
-    const release = typeof p.release === "string" ? p.release : "";
-    const machine = typeof p.machine === "string" ? p.machine : "";
-    const pythonVersion = typeof p.python_version === "string" ? p.python_version : undefined;
-    const label = [system, release, machine].filter(Boolean).join(" ") || "—";
-    return { label, pythonVersion };
+function getPlatform(health: HealthSummary | null, key: string): string {
+  const pf = health?.system?.platform;
+  if (pf && typeof pf === "object") {
+    const v = (pf as Record<string, unknown>)[key];
+    if (typeof v === "string") return v;
   }
-  return { label: "—" };
+  return "—";
+}
+
+function formatPlatformLabel(platform: unknown): string {
+  if (!platform || typeof platform !== "object") return "—";
+  const p = platform as Record<string, unknown>;
+  const system = typeof p.system === "string" ? p.system : "";
+  const release = typeof p.release === "string" ? p.release : "";
+  const machine = typeof p.machine === "string" ? p.machine : "";
+  const label = [system, release, machine].filter(Boolean).join(" ");
+  return label || "—";
 }
 
 function Stat({ icon: Icon, label, value, color }: { icon: typeof UsersIcon; label: string; value: number; color: string }) {

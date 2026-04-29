@@ -1,43 +1,72 @@
-// Types for super admin endpoints (system, sessions, metrics, audit, admin activity)
+// Types for super admin endpoints — aligned to the actual backend shapes
+// (`src/schemas/superadmin.py`).
 
 // =============================================================================
 // HEALTH
 // =============================================================================
 
-export interface SystemHealth {
-  status: string;
-  uptime_seconds: number;
+export interface CPUInfo {
+  percent: number;
+  count_logical: number;
+  count_physical: number | null;
+}
+
+export interface MemoryInfo {
+  total_mb: number;
+  available_mb: number;
+  used_mb: number;
+  percent: number;
+}
+
+export interface DiskInfo {
+  total_gb: number;
+  used_gb: number;
+  free_gb: number;
+  percent: number;
+}
+
+export interface ProcessInfo {
+  pid: number;
+  memory_mb: number;
   cpu_percent: number;
-  memory_percent: number;
-  memory_used_mb: number;
-  memory_total_mb: number;
-  disk_percent: number;
-  disk_used_gb: number;
-  disk_total_gb: number;
-  python_version?: string;
-  platform?: string | {
-    system?: string;
-    release?: string;
-    machine?: string;
-    python_version?: string;
-  };
+  threads: number;
+  started_at: string;
+  uptime_seconds: number;
+}
+
+export interface SystemHealth {
+  status: string; // "ok" | "degraded" | "error"
+  timestamp: string;
+  cpu: CPUInfo;
+  memory: MemoryInfo;
+  disk: DiskInfo;
+  process: ProcessInfo;
+  platform: Record<string, unknown>; // { system, release, machine, python_version, ... }
+}
+
+export interface LargestTable {
+  table_name: string;
+  size_mb: number;
+  row_count?: number | null;
 }
 
 export interface DatabaseHealth {
   status: string;
+  timestamp: string;
+  connected: boolean;
+  latency_ms: number | null;
   dialect: string;
-  connection_pool_size?: number | null;
-  active_connections?: number | null;
-  total_tables?: number | null;
-  database_size_mb?: number | null;
-  latency_ms?: number | null;
+  total_size_mb: number | null;
+  table_count: number | null;
+  largest_tables: LargestTable[];
+  error: string | null;
 }
 
 export interface HealthSummary {
   status: string;
+  timestamp: string;
   system: SystemHealth;
   database: DatabaseHealth;
-  timestamp: string;
 }
 
 // =============================================================================
@@ -47,64 +76,107 @@ export interface HealthSummary {
 export interface SessionRecord {
   id: string;
   user_id: string;
-  user_email: string;
-  user_full_name: string;
-  user_agent: string | null;
-  ip_address: string | null;
+  user_email: string | null;
+  user_full_name: string | null;
   created_at: string;
   expires_at: string;
-  last_activity_at: string | null;
-  is_current: boolean;
+  last_activity_at: string;
+  user_agent: string | null;
+  ip_address: string | null;
+  is_expired: boolean;
+}
+
+export interface SessionList {
+  total: number;
+  page: number;
+  page_size: number;
+  items: SessionRecord[];
 }
 
 export interface SessionStats {
   total_active: number;
+  total_expired: number;
   unique_users: number;
-  expiring_soon: number;
-  by_user_agent: Array<{ user_agent: string; count: number }>;
+  sessions_last_24h: number;
+  sessions_last_7d: number;
+  sessions_by_day: Array<{ date: string; count: number }>;
 }
 
 export interface SuspiciousSession {
   user_id: string;
-  user_email: string;
-  user_full_name: string;
-  active_sessions: number;
+  user_email: string | null;
+  user_full_name: string | null;
+  reason: string;
+  session_count: number;
   unique_ips: number;
-  ips: string[];
+  sessions: SessionRecord[];
+}
+
+export interface CleanupResponse {
+  deleted: number;
+  message: string;
 }
 
 // =============================================================================
 // METRICS
 // =============================================================================
 
-export interface RequestMetricsBucket {
-  timestamp: string;
-  requests: number;
-  avg_latency_ms: number;
-  p95_latency_ms: number;
-  errors: number;
+export interface EndpointMetric {
+  method: string;
+  path: string;
+  request_count: number;
+  avg_duration_ms: number;
+  p95_duration_ms?: number | null;
+  error_rate: number;
+  last_called_at: string | null;
+}
+
+export interface RequestsMetrics {
+  period_hours: number;
+  total_requests: number;
+  avg_duration_ms: number;
+  error_rate: number;
+  top_endpoints: EndpointMetric[];
+  slowest_endpoints: EndpointMetric[];
 }
 
 export interface ErrorMetric {
+  method: string;
+  path: string;
   status_code: number;
   count: number;
-  endpoint: string;
-  last_seen: string;
+  last_seen_at: string;
 }
 
-export interface ActiveUsersMetric {
-  active_now: number;
-  active_today: number;
-  active_last_7d: number;
+export interface ErrorsMetrics {
+  period_hours: number;
+  total_errors: number;
+  errors_4xx: number;
+  errors_5xx: number;
+  by_endpoint: ErrorMetric[];
+}
+
+export interface ActiveUsersBucket {
+  bucket: string;
+  unique_users: number;
+  request_count: number;
+}
+
+export interface ActiveUsers {
+  granularity: string; // "hour" | "day"
+  period_hours: number;
+  buckets: ActiveUsersBucket[];
+}
+
+export interface TableMetric {
+  table_name: string;
+  row_count: number;
+  growth_24h: number | null;
 }
 
 export interface DatabaseMetrics {
-  total_users: number;
-  total_sessions: number;
-  total_courses: number;
-  total_enrollments: number;
-  database_size_mb: number | null;
-  latency_ms: number | null;
+  timestamp: string;
+  tables: TableMetric[];
 }
 
 // =============================================================================
@@ -113,6 +185,7 @@ export interface DatabaseMetrics {
 
 export interface AuditLogRow {
   id: string;
+  created_at: string;
   user_id: string | null;
   user_email: string | null;
   user_full_name: string | null;
@@ -123,7 +196,6 @@ export interface AuditLogRow {
   extra_data: Record<string, unknown> | null;
   ip_address: string | null;
   user_agent: string | null;
-  created_at: string;
 }
 
 export interface AuditLogList {
@@ -133,17 +205,31 @@ export interface AuditLogList {
   items: AuditLogRow[];
 }
 
+export interface AuditAction {
+  value: string;
+  label: string;
+  category: string;
+}
+
 // =============================================================================
 // ADMINS ACTIVITY
 // =============================================================================
 
 export interface AdminActivityRow {
   user_id: string;
-  user_email: string;
-  user_full_name: string;
-  roles: string[];
-  total_actions_30d: number;
-  actions_today: number;
+  email: string;
+  full_name: string;
+  role_names: string[];
+  last_login_at: string | null;
+  actions_last_7d: number;
   last_action_at: string | null;
-  most_common_action: string | null;
+}
+
+export interface AdminRoleHistoryRow {
+  timestamp: string;
+  actor_id: string | null;
+  actor_email: string | null;
+  action: string;
+  description: string | null;
+  extra_data: Record<string, unknown> | null;
 }

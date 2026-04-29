@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { superadminAuditApi } from "../../lib/superadminApi";
-import type { AuditLogRow } from "../../types/superadminPanel";
+import type { AuditAction, AuditLogRow } from "../../types/superadminPanel";
 import { PaginationBar } from "../../components/PaginationBar";
 
 export function SuperAdminAudit() {
@@ -19,11 +19,15 @@ export function SuperAdminAudit() {
   const [resourceFilter, setResourceFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [actions, setActions] = useState<string[]>([]);
+  const [actions, setActions] = useState<AuditAction[]>([]);
   const [viewing, setViewing] = useState<AuditLogRow | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  useEffect(() => { superadminAuditApi.actions().then(setActions).catch(() => {}); }, []);
+  useEffect(() => {
+    superadminAuditApi.actions()
+      .then((data) => setActions(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -36,8 +40,8 @@ export function SuperAdminAudit() {
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
       });
-      setItems(data.items);
-      setTotal(data.total);
+      setItems(data.items ?? []);
+      setTotal(data.total ?? 0);
     } catch (e) { toast.error((e as Error).message); }
     finally { setLoading(false); }
   }, [page, pageSize, search, actionFilter, resourceFilter, dateFrom, dateTo]);
@@ -58,6 +62,14 @@ export function SuperAdminAudit() {
     } catch (e) { toast.error((e as Error).message); }
     finally { setExporting(false); }
   };
+
+  // Group actions by category for the dropdown
+  const groupedActions = actions.reduce((acc, a) => {
+    const cat = a.category || "otros";
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(a);
+    return acc;
+  }, {} as Record<string, AuditAction[]>);
 
   return (
     <div className="max-w-7xl mx-auto px-6 lg:px-10 py-8">
@@ -90,7 +102,13 @@ export function SuperAdminAudit() {
         <select value={actionFilter} onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
           className="px-3 py-2 rounded-xl text-sm" style={{ border: "1.5px solid #E8EAED", backgroundColor: "#F9FAFB" }}>
           <option value="">Todas las acciones</option>
-          {(actions ?? []).map((a) => <option key={a} value={a}>{a}</option>)}
+          {Object.entries(groupedActions).map(([cat, list]) => (
+            <optgroup key={cat} label={cat.toUpperCase()}>
+              {list.map((a) => (
+                <option key={a.value} value={a.value}>{a.label}</option>
+              ))}
+            </optgroup>
+          ))}
         </select>
         <input value={resourceFilter} onChange={(e) => { setResourceFilter(e.target.value); setPage(1); }} placeholder="Tipo de recurso..."
           className="px-3 py-2 rounded-xl text-sm outline-none"
@@ -112,7 +130,7 @@ export function SuperAdminAudit() {
       <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF", border: "1px solid #E8EAED" }}>
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="animate-spin" size={28} style={{ color: "#7B61FF" }} /></div>
-        ) : (items ?? []).length === 0 ? (
+        ) : items.length === 0 ? (
           <div className="text-center py-16" style={{ color: "#9AA5B4" }}>Sin eventos</div>
         ) : (
           <table className="w-full">
@@ -127,7 +145,7 @@ export function SuperAdminAudit() {
               </tr>
             </thead>
             <tbody>
-              {(items ?? []).map((log) => (
+              {items.map((log) => (
                 <tr key={log.id} className="hover:bg-gray-50" style={{ borderBottom: "1px solid #F0F1F5" }}>
                   <td className="px-5 py-3 whitespace-nowrap" style={{ color: "#9AA5B4", fontSize: "0.78rem" }}>
                     {new Date(log.created_at).toLocaleString()}
@@ -142,7 +160,7 @@ export function SuperAdminAudit() {
                   </td>
                   <td className="px-5 py-3" style={{ color: "#1A2332", fontSize: "0.85rem" }}>
                     {log.resource_type ?? "—"}
-                    {log.description && <p style={{ color: "#6B7A8D", fontSize: "0.72rem" }}>{log.description}</p>}
+                    {log.description && <p style={{ color: "#6B7A8D", fontSize: "0.72rem" }} className="line-clamp-1">{log.description}</p>}
                   </td>
                   <td className="px-5 py-3" style={{ color: "#6B7A8D", fontSize: "0.75rem", fontFamily: "monospace" }}>{log.ip_address ?? "—"}</td>
                   <td className="px-5 py-3 text-right">
@@ -178,14 +196,14 @@ function DetailModal({ log, onClose }: { log: AuditLogRow; onClose: () => void }
         <div className="space-y-3">
           <Row label="Fecha" value={new Date(log.created_at).toLocaleString()} />
           <Row label="Acción" value={log.action} mono />
-          <Row label="Usuario" value={log.user_full_name ? `${log.user_full_name} (${log.user_email})` : "—"} />
+          <Row label="Usuario" value={log.user_full_name ? `${log.user_full_name} (${log.user_email ?? "—"})` : "—"} />
           <Row label="Tipo de recurso" value={log.resource_type ?? "—"} />
           <Row label="ID del recurso" value={log.resource_id ?? "—"} mono />
           <Row label="Descripción" value={log.description ?? "—"} />
           <Row label="IP" value={log.ip_address ?? "—"} mono />
           <Row label="User Agent" value={log.user_agent ?? "—"} mono />
 
-          {log.extra_data && (
+          {log.extra_data && Object.keys(log.extra_data).length > 0 && (
             <div>
               <p className="text-xs font-semibold mb-1" style={{ color: "#6B7A8D" }}>Datos adicionales</p>
               <pre className="rounded-xl p-3 text-xs overflow-x-auto"
