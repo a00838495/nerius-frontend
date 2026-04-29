@@ -2,17 +2,16 @@ import { useState } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router";
 import {
   LayoutDashboard,
-  Users,
   UserCog,
-  Building2,
-  Settings,
-  BarChart3,
-  ShieldCheck,
-  Key,
   LogOut,
   Menu,
   X,
   Crown,
+  Activity,
+  KeyRound,
+  Gauge,
+  ScrollText,
+  Server,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { PanelSwitcher } from "./PanelSwitcher";
@@ -21,7 +20,12 @@ import { Toaster } from "./ui/sonner";
 
 const superAdminNavItems = [
   { path: "/superadmin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { path: "/superadmin/administradores", label: "Administradores", icon: UserCog },
+  { path: "/superadmin/sistema", label: "Sistema", icon: Server, exact: false },
+  { path: "/superadmin/sesiones", label: "Sesiones", icon: KeyRound, exact: false },
+  { path: "/superadmin/metricas", label: "Métricas", icon: Gauge, exact: false },
+  { path: "/superadmin/auditoria", label: "Auditoría", icon: ScrollText, exact: false },
+  { path: "/superadmin/actividad-admins", label: "Actividad Admins", icon: Activity, exact: false },
+  { path: "/superadmin/administradores", label: "Administradores", icon: UserCog, exact: false },
 ];
 
 export function SuperAdminLayout() {
@@ -39,7 +43,6 @@ export function SuperAdminLayout() {
       className="min-h-screen flex"
       style={{ backgroundColor: "#F4F6F9", fontFamily: "'Open Sans', sans-serif" }}
     >
-      {/* Mobile backdrop */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-30 lg:hidden"
@@ -47,7 +50,6 @@ export function SuperAdminLayout() {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`fixed lg:sticky top-0 left-0 h-screen w-64 z-40 transition-transform duration-300 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
@@ -58,7 +60,6 @@ export function SuperAdminLayout() {
         }}
       >
         <div className="flex flex-col h-full">
-          {/* Header */}
           <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
             <button onClick={() => navigate("/superadmin")} className="flex items-center gap-2">
               <img src={whirlpoolLogo} alt="Logo" style={{ height: 26, filter: "brightness(0) invert(1)" }} />
@@ -71,7 +72,6 @@ export function SuperAdminLayout() {
             </button>
           </div>
 
-          {/* Role badge */}
           <div className="px-5 pt-4 pb-2">
             <div
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
@@ -82,7 +82,6 @@ export function SuperAdminLayout() {
             </div>
           </div>
 
-          {/* Nav */}
           <nav className="flex-1 overflow-y-auto px-3 py-2">
             {superAdminNavItems.map(({ path, label, icon: Icon, exact }) => (
               <NavLink
@@ -91,7 +90,7 @@ export function SuperAdminLayout() {
                 end={exact}
                 onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-[10px] mb-1 text-sm transition-all ${
+                  `flex items-center gap-3 px-3 py-2 rounded-[10px] mb-1 text-sm transition-all ${
                     isActive ? "" : "hover:bg-white/5"
                   }`
                 }
@@ -108,7 +107,6 @@ export function SuperAdminLayout() {
             ))}
           </nav>
 
-          {/* User footer */}
           <div className="p-3 border-t" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
             <div className="flex items-center gap-2 px-2 py-2 rounded-[10px]">
               <img src={avatar} alt={userName} className="w-8 h-8 rounded-full" />
@@ -125,9 +123,7 @@ export function SuperAdminLayout() {
         </div>
       </aside>
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
         <header
           className="sticky top-0 z-20 flex items-center justify-between px-6 py-3"
           style={{

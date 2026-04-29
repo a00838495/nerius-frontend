@@ -5,13 +5,17 @@ import {
   BookOpen,
   Users,
   Sparkles,
-  MessageSquare,
   Award,
   FileCheck,
   LogOut,
   Menu,
   X,
   Shield,
+  Building2,
+  ClipboardList,
+  MessageSquare,
+  BarChart3,
+  GraduationCap,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useUserRoles } from "./RequireRole";
@@ -22,6 +26,15 @@ import { Toaster } from "./ui/sonner";
 const allAdminNavItems = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true, requiresCourseAccess: false },
   { path: "/admin/cursos", label: "Cursos", icon: BookOpen, exact: false, requiresCourseAccess: true },
+  { path: "/admin/usuarios", label: "Usuarios", icon: Users, exact: false, requiresCourseAccess: false },
+  { path: "/admin/areas", label: "Áreas", icon: Building2, exact: false, requiresCourseAccess: false },
+  { path: "/admin/asignaciones", label: "Asignaciones", icon: ClipboardList, exact: false, requiresCourseAccess: false },
+  { path: "/admin/inscripciones", label: "Inscripciones", icon: GraduationCap, exact: false, requiresCourseAccess: false },
+  { path: "/admin/foro", label: "Foro", icon: MessageSquare, exact: false, requiresCourseAccess: false },
+  { path: "/admin/gemas", label: "Gemas", icon: Sparkles, exact: false, requiresCourseAccess: false },
+  { path: "/admin/badges", label: "Badges", icon: Award, exact: false, requiresCourseAccess: false },
+  { path: "/admin/certificaciones", label: "Certificaciones", icon: FileCheck, exact: false, requiresCourseAccess: false },
+  { path: "/admin/reportes", label: "Reportes", icon: BarChart3, exact: false, requiresCourseAccess: false },
 ];
 
 export function AdminLayout() {
@@ -32,7 +45,6 @@ export function AdminLayout() {
 
   if (!user) return null;
 
-  // Filter nav items based on role
   const adminNavItems = allAdminNavItems.filter((item) => {
     if (item.requiresCourseAccess) return canAccessCoursesSection;
     return true;
@@ -46,7 +58,6 @@ export function AdminLayout() {
       className="min-h-screen flex"
       style={{ backgroundColor: "#F4F6F9", fontFamily: "'Open Sans', sans-serif" }}
     >
-      {/* Mobile backdrop */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-30 lg:hidden"
@@ -54,7 +65,6 @@ export function AdminLayout() {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`fixed lg:sticky top-0 left-0 h-screen w-64 z-40 transition-transform duration-300 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
@@ -65,7 +75,6 @@ export function AdminLayout() {
         }}
       >
         <div className="flex flex-col h-full">
-          {/* Header */}
           <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: "#F0F1F5" }}>
             <button onClick={() => navigate("/admin")} className="flex items-center gap-2">
               <img src={whirlpoolLogo} alt="Logo" style={{ height: 26 }} />
@@ -78,7 +87,6 @@ export function AdminLayout() {
             </button>
           </div>
 
-          {/* Role badge */}
           <div className="px-5 pt-4 pb-2">
             <div
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
@@ -89,7 +97,6 @@ export function AdminLayout() {
             </div>
           </div>
 
-          {/* Nav */}
           <nav className="flex-1 overflow-y-auto px-3 py-2">
             {adminNavItems.map(({ path, label, icon: Icon, exact }) => (
               <NavLink
@@ -98,7 +105,7 @@ export function AdminLayout() {
                 end={exact}
                 onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-[10px] mb-1 text-sm transition-all ${
+                  `flex items-center gap-3 px-3 py-2 rounded-[10px] mb-1 text-sm transition-all ${
                     isActive ? "text-white" : "hover:bg-gray-50"
                   }`
                 }
@@ -114,7 +121,6 @@ export function AdminLayout() {
             ))}
           </nav>
 
-          {/* User footer */}
           <div className="p-3 border-t" style={{ borderColor: "#F0F1F5" }}>
             <div className="flex items-center gap-2 px-2 py-2 rounded-[10px]">
               <img src={avatar} alt={userName} className="w-8 h-8 rounded-full" />
@@ -131,9 +137,7 @@ export function AdminLayout() {
         </div>
       </aside>
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
         <header
           className="sticky top-0 z-20 flex items-center justify-between px-6 py-3"
           style={{
