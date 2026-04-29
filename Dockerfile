@@ -1,15 +1,24 @@
 # =============================================================================
 # Stage 1 — build the Vite/React bundle
 # =============================================================================
-FROM node:20-alpine AS builder
+# Debian slim (not alpine) to avoid the well-known ETXTBSY race between
+# BuildKit's overlay FS and esbuild's postinstall script under musl.
+FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
 
-# Install deps with cache-friendly layering
+# Install deps with cache-friendly layering.
 COPY package.json package-lock.json* ./
-# Use npm install (not ci) because the repo doesn't always ship a lockfile;
-# fall back to npm ci if the lockfile is present.
-RUN if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
+
+# Two-step install: first fetch packages without running install scripts, then
+# rebuild. This forces BuildKit to flush the binaries to disk before any of
+# them is exec'd, which is what triggers ETXTBSY when done in a single step.
+RUN if [ -f package-lock.json ]; then \
+        npm ci --no-audit --no-fund --ignore-scripts; \
+    else \
+        npm install --no-audit --no-fund --ignore-scripts; \
+    fi \
+ && npm rebuild
 
 # Build
 COPY . .
