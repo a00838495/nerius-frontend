@@ -250,20 +250,45 @@ export function AdminUsersList() {
 // MODAL: Create user
 // =============================================================================
 
+const ALLOWED_LOGIN_DOMAIN = "whirpool.com";
+
+type AssignableAdminRole = "content_admin" | "content_editor" | "content_viewer";
+
+const ROLE_OPTIONS: { value: "" | AssignableAdminRole; label: string; help: string }[] = [
+  { value: "", label: "Aprendiz (learner)", help: "Solo accede a cursos como estudiante." },
+  { value: "content_viewer", label: "Content Viewer", help: "Acceso de solo lectura al panel admin." },
+  { value: "content_editor", label: "Content Editor", help: "Puede editar cursos existentes." },
+  { value: "content_admin", label: "Content Admin", help: "Crea, publica y administra contenido." },
+];
+
 function CreateUserModal({ areas, onClose, onCreated }: { areas: AreaAdminRead[]; onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    first_name: string;
+    last_name: string;
+    email: string;
+    password: string;
+    gender: string;
+    area_id: string;
+    role: "" | AssignableAdminRole;
+  }>({
     first_name: "",
     last_name: "",
     email: "",
     password: "",
     gender: "",
     area_id: "",
+    role: "",
   });
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async () => {
     if (!form.first_name || !form.last_name || !form.email || !form.password) {
       toast.error("Todos los campos obligatorios");
+      return;
+    }
+    const normalizedEmail = form.email.trim().toLowerCase();
+    if (!normalizedEmail.endsWith(`@${ALLOWED_LOGIN_DOMAIN}`)) {
+      toast.error(`El email debe pertenecer al dominio @${ALLOWED_LOGIN_DOMAIN}`);
       return;
     }
     setSaving(true);
@@ -275,8 +300,13 @@ function CreateUserModal({ areas, onClose, onCreated }: { areas: AreaAdminRead[]
         password: form.password,
         gender: form.gender || null,
         area_id: form.area_id || null,
+        role: form.role || null,
       });
-      toast.success("Usuario creado");
+      toast.success(
+        form.role
+          ? `Usuario creado con rol ${form.role}`
+          : "Usuario creado",
+      );
       onCreated();
     } catch (e) {
       toast.error((e as Error).message);
@@ -284,6 +314,8 @@ function CreateUserModal({ areas, onClose, onCreated }: { areas: AreaAdminRead[]
       setSaving(false);
     }
   };
+
+  const selectedRoleHelp = ROLE_OPTIONS.find((r) => r.value === form.role)?.help;
 
   return (
     <Modal title="Nuevo usuario" onClose={onClose}>
@@ -294,8 +326,14 @@ function CreateUserModal({ areas, onClose, onCreated }: { areas: AreaAdminRead[]
         <Field label="Apellido">
           <input value={form.last_name} onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))} className={inputCls} />
         </Field>
-        <Field label="Email">
-          <input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className={inputCls} />
+        <Field label={`Email (debe ser @${ALLOWED_LOGIN_DOMAIN})`}>
+          <input
+            type="email"
+            value={form.email}
+            placeholder={`tu.usuario@${ALLOWED_LOGIN_DOMAIN}`}
+            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+            className={inputCls}
+          />
         </Field>
         <Field label="Contraseña inicial">
           <input type="text" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} className={inputCls} />
@@ -308,6 +346,20 @@ function CreateUserModal({ areas, onClose, onCreated }: { areas: AreaAdminRead[]
             <option value="">Sin área</option>
             {areas.map((a) => (<option key={a.id} value={a.id}>{a.name}</option>))}
           </select>
+        </Field>
+        <Field label="Rol / permisos">
+          <select
+            value={form.role}
+            onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as "" | AssignableAdminRole }))}
+            className={inputCls}
+          >
+            {ROLE_OPTIONS.map((opt) => (
+              <option key={opt.value || "learner"} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          {selectedRoleHelp && (
+            <p className="mt-1 text-[11px]" style={{ color: "#6B7A8D" }}>{selectedRoleHelp}</p>
+          )}
         </Field>
       </div>
       <div className="flex justify-end gap-2 mt-5">

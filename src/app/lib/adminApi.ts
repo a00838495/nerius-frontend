@@ -72,6 +72,7 @@ export const adminUsersApi = {
     password: string;
     gender?: string | null;
     area_id?: string | null;
+    role?: "content_admin" | "content_editor" | "content_viewer" | null;
   }) => apiPost<UserAdminRead>(`${BASE}/users-management`, body),
   update: (
     id: string,

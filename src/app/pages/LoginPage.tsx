@@ -9,6 +9,8 @@ import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 import whirlpoolLogo from '../../assets/c1344ad5145e3dcee746b700b0a6ef41f0a04829.png';
 
+const ALLOWED_EMAIL_DOMAIN = 'whirpool.com';
+
 export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,8 +23,16 @@ export function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
 
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail.endsWith(`@${ALLOWED_EMAIL_DOMAIN}`)) {
+      setError(
+        `Solo se permite el acceso con cuentas corporativas @${ALLOWED_EMAIL_DOMAIN}.`
+      );
+      return;
+    }
+
+    setLoading(true);
     try {
       await login(email, password);
       navigate('/');
@@ -214,10 +224,10 @@ export function LoginPage() {
                 <Label htmlFor="email" className="text-white mb-2 block font-medium">
                   Correo Electrónico
                 </Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  placeholder="user@example.com"
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder={`tu.usuario@${ALLOWED_EMAIL_DOMAIN}`}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
