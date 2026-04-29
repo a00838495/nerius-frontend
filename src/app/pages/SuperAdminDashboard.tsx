@@ -99,12 +99,12 @@ export function SuperAdminDashboard() {
 
       {/* Resource gauges */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-        <Gauge label="CPU" value={health?.system.cpu_percent ?? 0} icon={Cpu} color="#0099DC"
-          subtitle={`${health?.system.cpu_percent.toFixed(1)}% en uso`} />
-        <Gauge label="Memoria" value={health?.system.memory_percent ?? 0} icon={MemoryStick} color="#7B61FF"
-          subtitle={`${health?.system.memory_used_mb.toFixed(0) ?? 0} / ${health?.system.memory_total_mb.toFixed(0) ?? 0} MB`} />
-        <Gauge label="Disco" value={health?.system.disk_percent ?? 0} icon={HardDrive} color="#E5A800"
-          subtitle={`${health?.system.disk_used_gb.toFixed(1) ?? 0} / ${health?.system.disk_total_gb.toFixed(1) ?? 0} GB`} />
+        <Gauge label="CPU" value={health?.system?.cpu_percent ?? 0} icon={Cpu} color="#0099DC"
+          subtitle={`${fmt(health?.system?.cpu_percent, 1)}% en uso`} />
+        <Gauge label="Memoria" value={health?.system?.memory_percent ?? 0} icon={MemoryStick} color="#7B61FF"
+          subtitle={`${fmt(health?.system?.memory_used_mb, 0)} / ${fmt(health?.system?.memory_total_mb, 0)} MB`} />
+        <Gauge label="Disco" value={health?.system?.disk_percent ?? 0} icon={HardDrive} color="#E5A800"
+          subtitle={`${fmt(health?.system?.disk_used_gb, 1)} / ${fmt(health?.system?.disk_total_gb, 1)} GB`} />
       </div>
 
       {/* Stats counters */}
@@ -126,8 +126,8 @@ export function SuperAdminDashboard() {
             <DbStat label="Cursos" value={dbMetrics?.total_courses ?? 0} />
             <DbStat label="Inscripciones" value={dbMetrics?.total_enrollments ?? 0} />
             <DbStat label="Sesiones (todas)" value={dbMetrics?.total_sessions ?? 0} />
-            <DbStat label="Tamaño BD" value={dbMetrics?.database_size_mb !== null && dbMetrics?.database_size_mb !== undefined ? `${dbMetrics.database_size_mb.toFixed(1)} MB` : "—"} />
-            <DbStat label="Latencia" value={dbMetrics?.latency_ms !== null && dbMetrics?.latency_ms !== undefined ? `${dbMetrics.latency_ms.toFixed(2)} ms` : "—"} />
+            <DbStat label="Tamaño BD" value={dbMetrics?.database_size_mb != null ? `${fmt(dbMetrics.database_size_mb, 1)} MB` : "—"} />
+            <DbStat label="Latencia" value={dbMetrics?.latency_ms != null ? `${fmt(dbMetrics.latency_ms, 2)} ms` : "—"} />
           </div>
         </div>
 
@@ -137,12 +137,12 @@ export function SuperAdminDashboard() {
             <Server size={18} style={{ color: "#7B61FF" }} /> Sistema
           </h3>
           <div className="space-y-2 text-sm">
-            <Row label="Estado" value={health?.system.status ?? "—"} />
-            <Row label="Python" value={health?.system.python_version ?? "—"} />
-            <Row label="Plataforma" value={health?.system.platform ?? "—"} />
-            <Row label="DB Dialect" value={health?.database.dialect ?? "—"} />
-            <Row label="Conexiones activas" value={String(health?.database.active_connections ?? "—")} />
-            <Row label="Total tablas" value={String(health?.database.total_tables ?? "—")} />
+            <Row label="Estado" value={health?.system?.status ?? "—"} />
+            <Row label="Python" value={health?.system?.python_version ?? formatPlatform(health?.system?.platform).pythonVersion ?? "—"} />
+            <Row label="Plataforma" value={formatPlatform(health?.system?.platform).label} />
+            <Row label="DB Dialect" value={health?.database?.dialect ?? "—"} />
+            <Row label="Conexiones activas" value={String(health?.database?.active_connections ?? "—")} />
+            <Row label="Total tablas" value={String(health?.database?.total_tables ?? "—")} />
           </div>
         </div>
       </div>
@@ -153,7 +153,7 @@ export function SuperAdminDashboard() {
 function Gauge({ label, value, icon: Icon, color, subtitle }: {
   label: string; value: number; icon: typeof Cpu; color: string; subtitle: string;
 }) {
-  const pct = Math.min(100, Math.max(0, value));
+  const pct = Math.min(100, Math.max(0, Number.isFinite(value) ? value : 0));
   const danger = pct > 90;
   const warn = pct > 75;
   const barColor = danger ? "#DC2626" : warn ? "#E87830" : color;
@@ -183,6 +183,27 @@ function Gauge({ label, value, icon: Icon, color, subtitle }: {
       <p style={{ color: "#6B7A8D", fontSize: "0.78rem", textAlign: "center", marginTop: "0.5rem" }}>{subtitle}</p>
     </div>
   );
+}
+
+function fmt(n: number | null | undefined, decimals = 1): string {
+  if (n == null || !Number.isFinite(n)) return "—";
+  return n.toFixed(decimals);
+}
+
+/** Backend can return platform as a string or as an object. Normalize to text. */
+function formatPlatform(platform: unknown): { label: string; pythonVersion?: string } {
+  if (!platform) return { label: "—" };
+  if (typeof platform === "string") return { label: platform };
+  if (typeof platform === "object") {
+    const p = platform as Record<string, unknown>;
+    const system = typeof p.system === "string" ? p.system : "";
+    const release = typeof p.release === "string" ? p.release : "";
+    const machine = typeof p.machine === "string" ? p.machine : "";
+    const pythonVersion = typeof p.python_version === "string" ? p.python_version : undefined;
+    const label = [system, release, machine].filter(Boolean).join(" ") || "—";
+    return { label, pythonVersion };
+  }
+  return { label: "—" };
 }
 
 function Stat({ icon: Icon, label, value, color }: { icon: typeof UsersIcon; label: string; value: number; color: string }) {

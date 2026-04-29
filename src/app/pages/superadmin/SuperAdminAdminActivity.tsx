@@ -165,11 +165,11 @@ function HistoryDrawer({ admin, onClose }: { admin: AdminActivityRow; onClose: (
             )}
 
             <h3 style={{ fontWeight: 700, color: "#1A2332", marginBottom: "0.75rem" }}>Últimos eventos</h3>
-            {history.length === 0 ? (
+            {(history ?? []).length === 0 ? (
               <p style={{ color: "#9AA5B4" }}>Sin eventos</p>
             ) : (
               <div className="space-y-2">
-                {history.map((h) => (
+                {(history ?? []).map((h) => (
                   <div key={h.id} className="rounded-xl p-3" style={{ backgroundColor: "#FAFBFC", border: "1px solid #F0F1F5" }}>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-mono"

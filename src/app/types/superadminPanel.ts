@@ -15,7 +15,12 @@ export interface SystemHealth {
   disk_used_gb: number;
   disk_total_gb: number;
   python_version?: string;
-  platform?: string;
+  platform?: string | {
+    system?: string;
+    release?: string;
+    machine?: string;
+    python_version?: string;
+  };
 }
 
 export interface DatabaseHealth {

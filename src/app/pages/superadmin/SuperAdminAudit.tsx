@@ -90,7 +90,7 @@ export function SuperAdminAudit() {
         <select value={actionFilter} onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
           className="px-3 py-2 rounded-xl text-sm" style={{ border: "1.5px solid #E8EAED", backgroundColor: "#F9FAFB" }}>
           <option value="">Todas las acciones</option>
-          {actions.map((a) => <option key={a} value={a}>{a}</option>)}
+          {(actions ?? []).map((a) => <option key={a} value={a}>{a}</option>)}
         </select>
         <input value={resourceFilter} onChange={(e) => { setResourceFilter(e.target.value); setPage(1); }} placeholder="Tipo de recurso..."
           className="px-3 py-2 rounded-xl text-sm outline-none"
@@ -112,7 +112,7 @@ export function SuperAdminAudit() {
       <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF", border: "1px solid #E8EAED" }}>
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="animate-spin" size={28} style={{ color: "#7B61FF" }} /></div>
-        ) : items.length === 0 ? (
+        ) : (items ?? []).length === 0 ? (
           <div className="text-center py-16" style={{ color: "#9AA5B4" }}>Sin eventos</div>
         ) : (
           <table className="w-full">
@@ -127,7 +127,7 @@ export function SuperAdminAudit() {
               </tr>
             </thead>
             <tbody>
-              {items.map((log) => (
+              {(items ?? []).map((log) => (
                 <tr key={log.id} className="hover:bg-gray-50" style={{ borderBottom: "1px solid #F0F1F5" }}>
                   <td className="px-5 py-3 whitespace-nowrap" style={{ color: "#9AA5B4", fontSize: "0.78rem" }}>
                     {new Date(log.created_at).toLocaleString()}

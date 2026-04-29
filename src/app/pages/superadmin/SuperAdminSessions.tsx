@@ -127,7 +127,7 @@ export function SuperAdminSessions() {
                 </tr>
               </thead>
               <tbody>
-                {sessions.map((s) => (
+                {(sessions ?? []).map((s) => (
                   <tr key={s.id} className="hover:bg-gray-50" style={{ borderBottom: "1px solid #F0F1F5" }}>
                     <td className="px-5 py-3">
                       <p style={{ color: "#1A2332", fontWeight: 600, fontSize: "0.85rem" }}>
@@ -164,7 +164,7 @@ export function SuperAdminSessions() {
           </div>
         ) : (
           <div className="space-y-3">
-            {suspicious.map((s) => (
+            {(suspicious ?? []).map((s) => (
               <motion.div key={s.user_id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                 className="rounded-2xl p-4"
                 style={{ backgroundColor: "#FFFFFF", border: "1px solid rgba(220,38,38,0.25)" }}>

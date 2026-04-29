@@ -92,7 +92,7 @@ export function SuperAdminMetrics() {
         <h3 className="flex items-center gap-2 mb-4" style={{ color: "#1A2332", fontWeight: 700, fontSize: "1.05rem" }}>
           <Activity size={18} style={{ color: "#7B61FF" }} /> Solicitudes y latencia
         </h3>
-        {requests.length === 0 ? (
+        {(requests ?? []).length === 0 ? (
           <p style={{ color: "#9AA5B4", textAlign: "center", padding: "2rem 0" }}>
             Sin datos. Las métricas se generan a medida que llegan requests.
           </p>
@@ -118,7 +118,7 @@ export function SuperAdminMetrics() {
         <h3 className="flex items-center gap-2 mb-4" style={{ color: "#1A2332", fontWeight: 700, fontSize: "1.05rem" }}>
           <AlertTriangle size={18} style={{ color: "#DC2626" }} /> Errores recientes
         </h3>
-        {requests.length > 0 && (
+        {(requests ?? []).length > 0 && (
           <ResponsiveContainer width="100%" height={120}>
             <AreaChart data={requests}>
               <defs>
