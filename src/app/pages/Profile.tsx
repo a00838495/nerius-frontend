@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Edit2, Camera, Mail, Building2, BookOpen, Clock, Trophy,
-  Calendar, Shield, TrendingUp, Gem, Check, Star, Award,
+  Camera, Mail, Building2, BookOpen, Clock, Trophy,
+  Calendar, Shield, TrendingUp, Gem, Check, Award,
   Sparkles, Bookmark, Loader2, CheckCircle2, ChevronRight, FileCheck,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
@@ -30,6 +30,12 @@ const EMPTY_STATS: ProfileStats = {
   saved_gems_count: 0,
 };
 
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: "Super Admin",
+  content_admin: "Content Admin",
+  learner: "Aprendiz",
+};
+
 function getLevel(completed: number): string {
   if (completed === 0) return "Principiante";
   if (completed <= 2) return "Explorador";
@@ -38,15 +44,28 @@ function getLevel(completed: number): string {
   return "Experto";
 }
 
+interface Badge {
+  id: string;
+  name: string;
+  description: string | null;
+  icon_url: string | null;
+  main_color: string;
+  secondary_color: string;
+}
+
+interface UserBadge {
+  id: string;
+  badge: Badge;
+  awarded_at: string;
+}
+
 export function Profile() {
-  const { user, updateProfile } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "history" | "gems">("overview");
-  const [formData, setFormData] = useState({ first_name: "", last_name: "" });
   const [stats, setStats] = useState<ProfileStats>(EMPTY_STATS);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [badges, setBadges] = useState<UserBadge[]>([]);
   const [certifications, setCertifications] = useState<UserCertification[]>([]);
   const [completedCourses, setCompletedCourses] = useState<Array<{
     id: string;
@@ -60,9 +79,11 @@ export function Profile() {
   const [gemCollection, setGemCollection] = useState<UserGemCollectionEntry[]>([]);
   const [gemsLoading, setGemsLoading] = useState(false);
 
-  useEffect(() => {
-    if (user) setFormData({ first_name: user.first_name, last_name: user.last_name });
-  }, [user]);
+  // Local photo previews (no backend upload yet)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -70,13 +91,18 @@ export function Profile() {
     Promise.all([
       fetch("/api/v1/auth/me/stats", { credentials: "include" }),
       fetch("/api/v1/certifications/my", { credentials: "include" }),
+      fetch("/api/v1/courses/user/badges", { credentials: "include" }),
     ])
-      .then(async ([statsRes, certsRes]) => {
+      .then(async ([statsRes, certsRes, badgesRes]) => {
         if (statsRes.ok) setStats(await statsRes.json());
         else setStats(EMPTY_STATS);
         if (certsRes.ok) {
           const data = await certsRes.json();
           setCertifications(Array.isArray(data) ? data : []);
+        }
+        if (badgesRes.ok) {
+          const data = await badgesRes.json();
+          setBadges(Array.isArray(data) ? data : []);
         }
       })
       .catch(() => setStats(EMPTY_STATS))
@@ -130,17 +156,18 @@ export function Profile() {
     }
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await updateProfile(formData);
-      setEditing(false);
-      toast.success("Perfil actualizado correctamente");
-    } catch (err: any) {
-      toast.error(err.message || "Error al guardar");
-    } finally {
-      setSaving(false);
-    }
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarPreview(URL.createObjectURL(file));
+    toast.info("La subida de fotos estará disponible próximamente");
+  };
+
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverPreview(URL.createObjectURL(file));
+    toast.info("La subida de fotos estará disponible próximamente");
   };
 
   if (!user) {
@@ -155,15 +182,22 @@ export function Profile() {
   }
 
   const userName = `${user.first_name} ${user.last_name}`.trim() || "Usuario";
-  const userAvatar =
-    user.avatar ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=1C3A5C&color=fff&size=128`;
+  const generatedAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=1C3A5C&color=fff&size=128`;
+  const userAvatar = avatarPreview ?? generatedAvatar;
+  const roleLabel = user.role_name ? (ROLE_LABELS[user.role_name] ?? user.role_name) : "Aprendiz";
+  const memberSince = user.created_at
+    ? new Date(user.created_at).toLocaleDateString("es-ES", { month: "long", year: "numeric" })
+    : null;
 
   const level = getLevel(stats.completed_courses);
   const levelProgress = Math.min(stats.completed_courses * 20, 100);
 
   return (
     <div className="max-w-[1440px] mx-auto px-6 lg:px-10 py-8">
+      {/* Hidden file inputs */}
+      <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+      <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
+
       <div className="flex flex-col lg:flex-row gap-6 items-start">
 
         {/* ── LEFT SIDEBAR ── */}
@@ -171,74 +205,70 @@ export function Profile() {
           initial={{ opacity: 0, x: -16 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.35 }}
-          className="lg:w-72 xl:w-80 shrink-0 flex flex-col gap-4"
+          className="w-full lg:w-72 xl:w-80 shrink-0 flex flex-col gap-4"
         >
           {/* Avatar card */}
           <div
             className="rounded-2xl overflow-hidden"
             style={{ backgroundColor: "#FFFFFF", boxShadow: "0 2px 20px rgba(0,0,0,0.08)" }}
           >
-            <div className="relative h-24 overflow-hidden">
-              <img src={coverImage} alt="" className="w-full h-full object-cover" />
-              <div
-                className="absolute inset-0"
-                style={{ background: "linear-gradient(to bottom, rgba(28,58,92,0.35), rgba(28,58,92,0.7))" }}
+            {/* Cover photo with camera overlay */}
+            <div
+              className="relative h-24 overflow-hidden group cursor-pointer"
+              onClick={() => coverInputRef.current?.click()}
+            >
+              <img
+                src={coverPreview ?? coverImage}
+                alt=""
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               />
+              <div
+                className="absolute inset-0 transition-opacity duration-200 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2"
+                style={{ background: "rgba(28,58,92,0.55)" }}
+              >
+                <Camera size={16} color="white" />
+                <span className="text-white text-xs font-semibold">Cambiar portada</span>
+              </div>
             </div>
 
+            {/* Avatar + name */}
             <div className="flex flex-col items-center px-6 pb-6 -mt-10">
-              <div className="relative mb-3">
+              {/* Avatar with camera overlay */}
+              <div
+                className="relative mb-3 cursor-pointer group/av"
+                onClick={() => avatarInputRef.current?.click()}
+              >
                 <img
                   src={userAvatar}
                   alt={userName}
-                  className="w-20 h-20 rounded-full object-cover"
+                  className="w-20 h-20 rounded-full object-cover transition-opacity duration-200 group-hover/av:opacity-80"
                   style={{ border: "3px solid #FFFFFF", boxShadow: "0 4px 16px rgba(0,0,0,0.18)" }}
                 />
-                {editing && (
-                  <button
-                    className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: "#E5A800", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
-                  >
-                    <Camera size={12} color="white" />
-                  </button>
-                )}
+                <div
+                  className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover/av:opacity-100 transition-opacity duration-200"
+                  style={{ background: "rgba(28,58,92,0.55)" }}
+                >
+                  <Camera size={18} color="white" />
+                </div>
+                {/* Online dot */}
                 <span
                   className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white"
                   style={{ backgroundColor: "#22C55E" }}
                 />
               </div>
 
-              {editing ? (
-                <div className="w-full space-y-2 mb-3">
-                  <input
-                    value={formData.first_name}
-                    onChange={(e) => setFormData((p) => ({ ...p, first_name: e.target.value }))}
-                    placeholder="Nombre"
-                    className="w-full text-center text-sm px-3 py-2 rounded-xl outline-none"
-                    style={{ border: "1.5px solid #0099DC", color: "#1A2332", fontFamily: "'Nunito', sans-serif", fontWeight: 700 }}
-                  />
-                  <input
-                    value={formData.last_name}
-                    onChange={(e) => setFormData((p) => ({ ...p, last_name: e.target.value }))}
-                    placeholder="Apellido"
-                    className="w-full text-center text-sm px-3 py-2 rounded-xl outline-none"
-                    style={{ border: "1.5px solid #0099DC", color: "#1A2332", fontFamily: "'Open Sans', sans-serif" }}
-                  />
-                </div>
-              ) : (
-                <h1
-                  className="text-center"
-                  style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: "1.15rem", color: "#1A2332", marginBottom: "0.15rem" }}
-                >
-                  {userName}
-                </h1>
-              )}
+              <h1
+                className="text-center w-full"
+                style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: "1.15rem", color: "#1A2332", marginBottom: "0.15rem" }}
+              >
+                {userName}
+              </h1>
 
-              <p style={{ color: "#9AA5B4", fontSize: "0.8rem", fontFamily: "'Open Sans', sans-serif" }}>
-                {user.role || "Aprendiz"}
+              <p className="text-center" style={{ color: "#9AA5B4", fontSize: "0.8rem", fontFamily: "'Open Sans', sans-serif" }}>
+                {roleLabel}
               </p>
 
-              <div className="flex gap-2 mt-3">
+              <div className="flex flex-wrap justify-center gap-2 mt-3">
                 <span
                   className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
                   style={{ backgroundColor: "rgba(0,153,220,0.1)", color: "#0099DC" }}
@@ -252,35 +282,6 @@ export function Profile() {
                   <Trophy size={10} /> {stats.rank ? `#${stats.rank}` : "N/A"}
                 </span>
               </div>
-
-              {editing ? (
-                <div className="flex gap-2 mt-4 w-full">
-                  <button
-                    onClick={() => { setFormData({ first_name: user.first_name, last_name: user.last_name }); setEditing(false); }}
-                    disabled={saving}
-                    className="flex-1 py-2 rounded-xl text-sm font-medium transition-all"
-                    style={{ border: "1px solid #E8EAED", color: "#6B7A8D", backgroundColor: "#F9FAFB" }}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="flex-1 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-60"
-                    style={{ backgroundColor: "#E5A800", color: "#FFFFFF" }}
-                  >
-                    {saving ? "Guardando…" : "Guardar"}
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="mt-4 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all hover:bg-gray-50 active:scale-[0.98]"
-                  style={{ border: "1px solid #E8EAED", color: "#1C3A5C" }}
-                >
-                  <Edit2 size={13} /> Editar Perfil
-                </button>
-              )}
             </div>
           </div>
 
@@ -296,21 +297,42 @@ export function Profile() {
               Información
             </h3>
             <div className="space-y-3">
-              {[
-                { icon: Mail, label: user.email },
-                { icon: Building2, label: user.department || "Sin departamento" },
-                { icon: Shield, label: user.role || "Aprendiz" },
-                { icon: Calendar, label: `Miembro desde ${new Date().toLocaleDateString("es-ES", { month: "long", year: "numeric" })}` },
-              ].map(({ icon: Icon, label }) => (
-                <div key={label} className="flex items-start gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: "#F4F6F9" }}>
+                  <Mail size={13} color="#6B7A8D" />
+                </div>
+                <span className="text-sm leading-snug break-all" style={{ color: "#4A5568", fontFamily: "'Open Sans', sans-serif" }}>
+                  {user.email}
+                </span>
+              </div>
+              {user.area_name && (
+                <div className="flex items-start gap-3">
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: "#F4F6F9" }}>
-                    <Icon size={13} color="#6B7A8D" />
+                    <Building2 size={13} color="#6B7A8D" />
                   </div>
-                  <span className="text-sm leading-snug break-all" style={{ color: "#4A5568", fontFamily: "'Open Sans', sans-serif" }}>
-                    {label}
+                  <span className="text-sm leading-snug" style={{ color: "#4A5568", fontFamily: "'Open Sans', sans-serif" }}>
+                    {user.area_name}
                   </span>
                 </div>
-              ))}
+              )}
+              <div className="flex items-start gap-3">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: "#F4F6F9" }}>
+                  <Shield size={13} color="#6B7A8D" />
+                </div>
+                <span className="text-sm leading-snug" style={{ color: "#4A5568", fontFamily: "'Open Sans', sans-serif" }}>
+                  {roleLabel}
+                </span>
+              </div>
+              {memberSince && (
+                <div className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: "#F4F6F9" }}>
+                    <Calendar size={13} color="#6B7A8D" />
+                  </div>
+                  <span className="text-sm leading-snug capitalize" style={{ color: "#4A5568", fontFamily: "'Open Sans', sans-serif" }}>
+                    Miembro desde {memberSince}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="mt-5 pt-4" style={{ borderTop: "1px solid #F0F1F5" }}>
@@ -332,28 +354,30 @@ export function Profile() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.08 }}
-          className="flex-1 min-w-0"
+          className="w-full flex-1 min-w-0"
         >
-          {/* Tab switcher */}
-          <div
-            className="inline-flex gap-1 p-1 rounded-xl mb-6"
-            style={{ backgroundColor: "#FFFFFF", boxShadow: "0 2px 8px rgba(0,0,0,0.07)" }}
-          >
-            {(["overview", "history", "gems"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className="px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200"
-                style={{
-                  color: activeTab === tab ? "#FFFFFF" : "#9AA5B4",
-                  backgroundColor: activeTab === tab ? "#1C3A5C" : "transparent",
-                  fontFamily: "'Open Sans', sans-serif",
-                  fontWeight: 600,
-                }}
-              >
-                {tab === "history" ? "Historial de Cursos" : tab === "gems" ? "Mis Gemas" : "Vista General"}
-              </button>
-            ))}
+          {/* Tab switcher — scrollable on mobile */}
+          <div className="mb-6 overflow-x-auto">
+            <div
+              className="inline-flex gap-1 p-1 rounded-xl"
+              style={{ backgroundColor: "#FFFFFF", boxShadow: "0 2px 8px rgba(0,0,0,0.07)" }}
+            >
+              {(["overview", "history", "gems"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className="px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap"
+                  style={{
+                    color: activeTab === tab ? "#FFFFFF" : "#9AA5B4",
+                    backgroundColor: activeTab === tab ? "#1C3A5C" : "transparent",
+                    fontFamily: "'Open Sans', sans-serif",
+                    fontWeight: 600,
+                  }}
+                >
+                  {tab === "history" ? "Historial de Cursos" : tab === "gems" ? "Mis Gemas" : "Vista General"}
+                </button>
+              ))}
+            </div>
           </div>
 
           <AnimatePresence mode="wait">
@@ -486,30 +510,77 @@ export function Profile() {
                   </div>
                 </div>
 
-                {/* Achievements */}
+                {/* Badges */}
                 <div className="rounded-2xl p-5" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
                   <div className="flex items-center justify-between mb-4">
                     <p style={{ fontFamily: "'Open Sans', sans-serif", fontWeight: 700, fontSize: "0.9rem", color: "#1A2332" }}>
                       Logros e Insignias
                     </p>
-                    {!statsLoading && stats.badges_count > 0 && (
+                    {!statsLoading && badges.length > 0 && (
                       <span
                         className="px-2.5 py-1 rounded-full text-xs font-semibold"
                         style={{ backgroundColor: "rgba(229,168,0,0.1)", color: "#E5A800" }}
                       >
-                        {stats.badges_count} obtenidas
+                        {badges.length} obtenidas
                       </span>
                     )}
                   </div>
-                  <div
-                    className="flex flex-col items-center py-8 rounded-xl"
-                    style={{ backgroundColor: "#F9FAFB", border: "1px dashed #E8EAED" }}
-                  >
-                    <Star size={30} color="#D1D9E6" className="mb-2" />
-                    <p style={{ fontSize: "0.85rem", color: "#9AA5B4", fontFamily: "'Open Sans', sans-serif" }}>
-                      {statsLoading ? "Cargando insignias..." : "Completa cursos para ganar insignias"}
-                    </p>
-                  </div>
+
+                  {statsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 size={24} className="animate-spin" style={{ color: "#E5A800" }} />
+                    </div>
+                  ) : badges.length === 0 ? (
+                    <div
+                      className="flex flex-col items-center py-8 rounded-xl"
+                      style={{ backgroundColor: "#F9FAFB", border: "1px dashed #E8EAED" }}
+                    >
+                      <Award size={30} color="#D1D9E6" className="mb-2" />
+                      <p style={{ fontSize: "0.85rem", color: "#9AA5B4", fontFamily: "'Open Sans', sans-serif" }}>
+                        Completa cursos para ganar insignias
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                      {badges.map((ub) => (
+                        <motion.div
+                          key={ub.id}
+                          whileHover={{ y: -3, scale: 1.03 }}
+                          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                          className="flex flex-col items-center text-center p-4 rounded-xl"
+                          style={{
+                            background: `linear-gradient(135deg, ${ub.badge.main_color}10, ${ub.badge.secondary_color}10)`,
+                            border: `1px solid ${ub.badge.main_color}25`,
+                          }}
+                        >
+                          <div
+                            className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3"
+                            style={{
+                              background: `linear-gradient(135deg, ${ub.badge.main_color}, ${ub.badge.secondary_color})`,
+                              boxShadow: `0 4px 12px ${ub.badge.main_color}40`,
+                            }}
+                          >
+                            {ub.badge.icon_url ? (
+                              <img src={ub.badge.icon_url} alt={ub.badge.name} className="w-7 h-7" />
+                            ) : (
+                              <Award size={20} color="#FFFFFF" />
+                            )}
+                          </div>
+                          <p className="text-xs font-semibold leading-tight mb-1" style={{ color: "#1A2332" }}>
+                            {ub.badge.name}
+                          </p>
+                          {ub.badge.description && (
+                            <p className="text-[10px] line-clamp-2 mb-1" style={{ color: "#6B7A8D" }}>
+                              {ub.badge.description}
+                            </p>
+                          )}
+                          <p className="text-[10px] mt-auto" style={{ color: "#9AA5B4" }}>
+                            {new Date(ub.awarded_at).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}
+                          </p>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
