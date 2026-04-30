@@ -38,13 +38,30 @@ server {
     # Reverse proxy: /api/* → backend service.
     # Cookies and CORS just work because the browser sees a single origin.
     location /api/ {
-        proxy_pass         ${BACKEND_URL};
+        # Resolver needed because proxy_pass uses a variable (DNS at request time).
+        # 127.0.0.11 = Docker's embedded DNS (Dockploy / docker-compose networks).
+        # 169.254.169.254 = GCP metadata DNS (Cloud Run).
+        # 8.8.8.8 = public fallback.
+        resolver 127.0.0.11 169.254.169.254 8.8.8.8 valid=30s ipv6=off;
+        resolver_timeout 5s;
+
+        # Extract the host from BACKEND_URL so we can set Host + SNI correctly.
+        # (Cloud Run routes by Host header and requires SNI on the TLS handshake.)
+        set $backend_url   ${BACKEND_URL};
+        set $backend_host  ${BACKEND_HOST};
+
+        proxy_pass         $backend_url;
         proxy_http_version 1.1;
 
-        proxy_set_header   Host              $host;
+        # Forward to Cloud Run with the correct upstream Host + SNI.
+        proxy_set_header   Host              $backend_host;
+        proxy_ssl_server_name on;
+        proxy_ssl_name        $backend_host;
+
         proxy_set_header   X-Real-IP         $remote_addr;
         proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_set_header   X-Forwarded-Host  $host;
 
         # Long-running endpoints (chat, exports). Tweak if needed.
         proxy_connect_timeout 30s;
