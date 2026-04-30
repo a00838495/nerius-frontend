@@ -12,6 +12,7 @@ import { superadminMetricsApi } from "../../lib/superadminApi";
 import type {
   ActiveUsers, DatabaseMetrics, ErrorsMetrics, RequestsMetrics,
 } from "../../types/superadminPanel";
+import { formatServerHourMinute, formatServerTime } from "./utils/serverTime";
 
 export function SuperAdminMetrics() {
   const [requests, setRequests] = useState<RequestsMetrics | null>(null);
@@ -115,7 +116,7 @@ export function SuperAdminMetrics() {
             <LineChart data={buckets}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F0F1F5" />
               <XAxis dataKey="bucket" tick={{ fontSize: 10, fill: "#9AA5B4" }}
-                tickFormatter={(t) => granularity === "hour" ? new Date(t).toLocaleTimeString().slice(0, 5) : t.slice(5)} />
+                tickFormatter={(t) => granularity === "hour" ? formatServerHourMinute(t) : t.slice(5)} />
               <YAxis yAxisId="left" tick={{ fontSize: 10, fill: "#9AA5B4" }} />
               <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: "#9AA5B4" }} />
               <Tooltip contentStyle={{ backgroundColor: "#FFFFFF", border: "1px solid #E8EAED", borderRadius: 8, fontSize: 12 }} />
@@ -210,7 +211,7 @@ export function SuperAdminMetrics() {
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span style={{ color: "#DC2626", fontWeight: 700, fontSize: "0.85rem" }}>{er.count}</span>
-                  <span style={{ color: "#9AA5B4", fontSize: "0.7rem" }}>{new Date(er.last_seen_at).toLocaleTimeString()}</span>
+                  <span style={{ color: "#9AA5B4", fontSize: "0.7rem" }}>{formatServerTime(er.last_seen_at)}</span>
                 </div>
               </div>
             ))}

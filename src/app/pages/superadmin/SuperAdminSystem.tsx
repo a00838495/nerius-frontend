@@ -7,6 +7,7 @@ import {
 import { toast } from "sonner";
 import { superadminHealthApi } from "../../lib/superadminApi";
 import type { SystemHealth, DatabaseHealth } from "../../types/superadminPanel";
+import { formatServerDateTime } from "./utils/serverTime";
 
 export function SuperAdminSystem() {
   const [system, setSystem] = useState<SystemHealth | null>(null);
@@ -52,6 +53,9 @@ export function SuperAdminSystem() {
           </h1>
           <p style={{ color: "#6B7A8D", marginTop: "0.25rem", fontSize: "0.9rem" }}>
             Auto-refresca cada 30 segundos
+          </p>
+          <p className="flex items-center gap-1" style={{ color: "#6B7A8D", marginTop: "0.15rem", fontSize: "0.8rem" }}>
+            <Clock size={12} /> Hora del servidor: {formatServerDateTime(system.timestamp)}
           </p>
         </div>
         <button onClick={() => fetchAll(true)} disabled={refreshing}

@@ -250,7 +250,7 @@ export function AdminUsersList() {
 // MODAL: Create user
 // =============================================================================
 
-const ALLOWED_LOGIN_DOMAIN = "whirpool.com";
+const ALLOWED_LOGIN_DOMAIN = "whirlpool.com";
 
 type AssignableAdminRole = "content_admin" | "content_editor" | "content_viewer";
 

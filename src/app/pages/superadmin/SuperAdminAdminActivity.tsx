@@ -8,6 +8,7 @@ import { superadminAdminsApi } from "../../lib/superadminApi";
 import type {
   AdminActivityRow, AdminRoleHistoryRow, AuditLogRow,
 } from "../../types/superadminPanel";
+import { formatServerDateTime } from "./utils/serverTime";
 
 const ROLE_META: Record<string, { label: string; icon: typeof Crown; color: string; bg: string }> = {
   super_admin: { label: "Super Admin", icon: Crown, color: "#7B61FF", bg: "rgba(123,97,255,0.12)" },
@@ -109,10 +110,10 @@ export function SuperAdminAdminActivity() {
                   </td>
                   <td className="px-5 py-3" style={{ color: "#7B61FF", fontWeight: 800, fontSize: "1.05rem" }}>{a.actions_last_7d ?? 0}</td>
                   <td className="px-5 py-3" style={{ color: "#9AA5B4", fontSize: "0.78rem" }}>
-                    {a.last_login_at ? new Date(a.last_login_at).toLocaleString() : "—"}
+                    {formatServerDateTime(a.last_login_at)}
                   </td>
                   <td className="px-5 py-3" style={{ color: "#9AA5B4", fontSize: "0.78rem" }}>
-                    {a.last_action_at ? new Date(a.last_action_at).toLocaleString() : "—"}
+                    {formatServerDateTime(a.last_action_at)}
                   </td>
                   <td className="px-5 py-3 text-right">
                     <button onClick={() => setViewing(a)} className="p-1.5 rounded-lg hover:bg-gray-100" title="Ver historial">
@@ -194,7 +195,7 @@ function HistoryDrawer({ admin, onClose }: { admin: AdminActivityRow; onClose: (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-mono"
                           style={{ backgroundColor: "rgba(123,97,255,0.1)", color: "#7B61FF" }}>{h.action}</span>
                         <span style={{ color: "#9AA5B4", fontSize: "0.72rem", marginLeft: "auto" }} className="flex items-center gap-1">
-                          <Clock size={10} /> {new Date(h.created_at).toLocaleString()}
+                          <Clock size={10} /> {formatServerDateTime(h.created_at)}
                         </span>
                       </div>
                       {h.description && <p style={{ color: "#1A2332", fontSize: "0.8rem" }}>{h.description}</p>}
@@ -218,7 +219,7 @@ function HistoryDrawer({ admin, onClose }: { admin: AdminActivityRow; onClose: (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-mono"
                           style={{ backgroundColor: "rgba(123,97,255,0.1)", color: "#7B61FF" }}>{h.action}</span>
                         <span style={{ color: "#9AA5B4", fontSize: "0.72rem", marginLeft: "auto" }} className="flex items-center gap-1">
-                          <Clock size={10} /> {new Date(h.timestamp).toLocaleString()}
+                          <Clock size={10} /> {formatServerDateTime(h.timestamp)}
                         </span>
                       </div>
                       {h.description && <p style={{ color: "#1A2332", fontSize: "0.8rem" }}>{h.description}</p>}

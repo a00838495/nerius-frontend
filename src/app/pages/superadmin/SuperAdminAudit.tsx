@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { superadminAuditApi } from "../../lib/superadminApi";
 import type { AuditAction, AuditLogRow } from "../../types/superadminPanel";
 import { PaginationBar } from "../../components/PaginationBar";
+import { formatServerDateTime } from "./utils/serverTime";
 
 export function SuperAdminAudit() {
   const [items, setItems] = useState<AuditLogRow[]>([]);
@@ -148,7 +149,7 @@ export function SuperAdminAudit() {
               {items.map((log) => (
                 <tr key={log.id} className="hover:bg-gray-50" style={{ borderBottom: "1px solid #F0F1F5" }}>
                   <td className="px-5 py-3 whitespace-nowrap" style={{ color: "#9AA5B4", fontSize: "0.78rem" }}>
-                    {new Date(log.created_at).toLocaleString()}
+                    {formatServerDateTime(log.created_at)}
                   </td>
                   <td className="px-5 py-3">
                     <p style={{ color: "#1A2332", fontWeight: 600, fontSize: "0.85rem" }}>{log.user_full_name ?? "Sistema"}</p>
@@ -194,7 +195,7 @@ function DetailModal({ log, onClose }: { log: AuditLogRow; onClose: () => void }
         </div>
 
         <div className="space-y-3">
-          <Row label="Fecha" value={new Date(log.created_at).toLocaleString()} />
+          <Row label="Fecha" value={formatServerDateTime(log.created_at)} />
           <Row label="Acción" value={log.action} mono />
           <Row label="Usuario" value={log.user_full_name ? `${log.user_full_name} (${log.user_email ?? "—"})` : "—"} />
           <Row label="Tipo de recurso" value={log.resource_type ?? "—"} />

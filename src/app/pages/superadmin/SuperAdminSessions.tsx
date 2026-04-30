@@ -9,6 +9,7 @@ import type {
   SessionRecord, SessionStats, SuspiciousSession,
 } from "../../types/superadminPanel";
 import { PaginationBar } from "../../components/PaginationBar";
+import { formatServerDateTime } from "./utils/serverTime";
 
 export function SuperAdminSessions() {
   const [tab, setTab] = useState<"active" | "suspicious">("active");
@@ -180,10 +181,10 @@ export function SuperAdminSessions() {
                         {(s.user_agent ?? "").substring(0, 50) || "—"}
                       </td>
                       <td className="px-5 py-3" style={{ color: "#9AA5B4", fontSize: "0.78rem" }}>
-                        {new Date(s.last_activity_at).toLocaleString()}
+                        {formatServerDateTime(s.last_activity_at)}
                       </td>
                       <td className="px-5 py-3" style={{ color: "#9AA5B4", fontSize: "0.78rem" }}>
-                        {new Date(s.expires_at).toLocaleString()}
+                        {formatServerDateTime(s.expires_at)}
                       </td>
                       <td className="px-5 py-3">
                         <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold"

@@ -9,7 +9,7 @@ import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 import whirlpoolLogo from '../../assets/c1344ad5145e3dcee746b700b0a6ef41f0a04829.png';
 
-const ALLOWED_EMAIL_DOMAIN = 'whirpool.com';
+const ALLOWED_EMAIL_DOMAIN = 'whirlpool.com';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
