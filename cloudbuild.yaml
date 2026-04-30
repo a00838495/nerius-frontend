@@ -1,7 +1,7 @@
 substitutions:
   _SERVICE_NAME: nerius-frontend
   _REGION: us-central1
-  _AR_REPOSITORY: cloud-run
+  _AR_REPOSITORY: cloud-run-source-deploy
   _BACKEND_URL: https://nerius-backend-862131549348.us-central1.run.app
 
 steps:
