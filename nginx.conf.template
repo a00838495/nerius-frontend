@@ -38,25 +38,10 @@ server {
     # Reverse proxy: /api/* → backend service.
     # Cookies and CORS just work because the browser sees a single origin.
     location /api/ {
-        # IPv4-only DNS resolver (Cloud Run *.run.app resuelve a IPv6 por
-        # default y la red de salida no siempre lo soporta bien).
-        resolver 8.8.8.8 1.1.1.1 valid=30s ipv6=off;
-
-        # Mete BACKEND_URL en una variable para forzar resolución en runtime
-        # vía el resolver de arriba (con proxy_pass literal nginx ignora el
-        # resolver y usa /etc/resolv.conf del sistema).
-        set $upstream "${BACKEND_URL}";
-        proxy_pass $upstream;
+        proxy_pass         ${BACKEND_URL};
         proxy_http_version 1.1;
 
-        # SNI + Host correctos. Cloud Run rutea por hostname, así que el
-        # backend tiene que ver SU hostname (no el del frontend) tanto en
-        # el handshake TLS (SNI) como en el header Host. $proxy_host se
-        # expande al hostname de $upstream automáticamente.
-        proxy_ssl_server_name on;
-        proxy_ssl_name        $proxy_host;
-        proxy_set_header      Host $proxy_host;
-
+        proxy_set_header   Host              $host;
         proxy_set_header   X-Real-IP         $remote_addr;
         proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header   X-Forwarded-Proto $scheme;
